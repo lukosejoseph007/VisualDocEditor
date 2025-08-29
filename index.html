@@ -2,59 +2,55 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>VisualDocEditor MVP</title>
+  <title>VisualDocEditor</title>
   <style>
-    body, html {
-      margin: 0;
-      padding: 0;
-      height: 100vh;
-      width: 100vw;
-      display: flex;
-      flex-direction: column;
-      font-family: sans-serif;
-    }
-    #toolbar {
-      background: #222;
-      color: #fff;
-      padding: 8px;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 10px;
-    }
-    #toolbar section {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-right: 20px;
-    }
-    #editor {
-      flex: 1;
-      width: 100%;
-    }
-    button, select, input {
-      padding: 4px 8px;
-      font-size: 14px;
-    }
-    input[type="text"], input[type="password"] {
-      min-width: 180px;
-    }
+    :root { --bg:#181818; --panel:#222; --text:#fff; --muted:#a0a0a0; --accent:#7aa2f7; }
+    html, body { margin:0; padding:0; height:100vh; width:100vw; font-family:system-ui, sans-serif; background:var(--bg); color:var(--text); }
+    #toolbar { background:var(--panel); padding:8px; display:flex; flex-wrap:wrap; align-items:center; gap:10px; border-bottom:1px solid #333; }
+    #toolbar section { display:flex; align-items:center; gap:8px; }
+    button, select, input { padding:4px 8px; font-size:14px; border-radius:6px; border:1px solid #444; background:#2a2a2a; color:var(--text); }
+    button:hover { background:#3a3a3a; }
+    button.context-mode { background:#1a4a5a; border-color:#2a6a7a; }
+    button.context-mode:hover { background:#2a5a6a; }
+    input[type="text"], input[type="password"] { min-width:180px; }
+    #main { display:flex; height:calc(100vh - 56px); width:100vw; }
+    #sidebar { width:280px; background:#1b1b1b; border-right:1px solid #333; display:flex; flex-direction:column; }
+    #folderHeader { padding:10px; border-bottom:1px solid #333; font-size:12px; color:var(--muted); word-break:break-all; }
+    #contextIndicator { padding:6px 10px; background:#2a4a2a; border-bottom:1px solid #333; font-size:11px; }
+    #fileSearchWrap { padding:8px; border-bottom:1px solid #333; }
+    #fileList { flex:1; overflow:auto; list-style:none; margin:0; padding:4px 0; }
+    .fileItem { padding:8px 10px; cursor:pointer; border-bottom:1px solid #232323; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .fileItem:hover { background:#262626; }
+    .fileItem.active { background:#313131; border-left:3px solid var(--accent); }
+    .fileItem.has-context { border-right:2px solid #4a6a4a; }
+    #editor { flex:1; min-width:0; }
+    .pill { font-size:11px; color:#ccc; background:#333; padding:2px 6px; border-radius:999px; }
+    .status { font-size:11px; color:var(--muted); margin-left:8px; }
   </style>
 </head>
 <body>
   <div id="toolbar">
     <!-- File -->
     <section>
-      <button id="openBtn">Open</button>
+      <button id="openFolderBtn">Open Folder</button>
+      <button id="openBtn">Open File</button>
       <button id="saveBtn">Save</button>
     </section>
 
-    <!-- AI Actions -->
+    <!-- Single File AI -->
     <section>
       <button id="aiImprove">Improve</button>
       <button id="aiSummarize">Summarize</button>
       <input id="aiQuestion" type="text" placeholder="Ask a question..." />
       <button id="aiAsk">Ask</button>
+    </section>
+
+    <!-- Multi-File AI -->
+    <section>
+      <button id="aiExplain" class="context-mode">Explain</button>
+      <button id="aiConnect" class="context-mode">Connect</button>
+      <button id="aiFind" class="context-mode">Find Similar</button>
+      <button id="aiOverview" class="context-mode">Overview</button>
     </section>
 
     <!-- AI Settings -->
@@ -64,13 +60,10 @@
         <option value="openrouter" selected>OpenRouter</option>
         <option value="openai">OpenAI</option>
       </select>
-
       <label>API Key:</label>
       <input id="apiKey" type="password" placeholder="Enter API Key" />
-
       <label>Model:</label>
       <input id="modelId" type="text" value="deepseek/deepseek-r1-0528:free" />
-
       <label>Mode:</label>
       <select id="aiMode">
         <option value="append">Append</option>
@@ -79,7 +72,18 @@
     </section>
   </div>
 
-  <div id="editor"></div>
+  <div id="main">
+    <aside id="sidebar">
+      <div id="folderHeader">No folder open</div>
+      <div id="contextIndicator">Context: Not ready</div>
+      <div id="fileSearchWrap">
+        <input id="fileSearch" type="text" placeholder="Filter files... (Ctrl+K)" style="width:100%" />
+      </div>
+      <ul id="fileList"></ul>
+    </aside>
+    <div id="editor"></div>
+  </div>
+
   <script type="module" src="./renderer.mjs"></script>
 </body>
 </html>
