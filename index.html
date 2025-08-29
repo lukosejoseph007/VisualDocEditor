@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>VisualDocEditor MVP</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+      font-family: sans-serif;
+    }
+    #toolbar {
+      background: #222;
+      color: #fff;
+      padding: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+    #toolbar section {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-right: 20px;
+    }
+    #editor {
+      flex: 1;
+      width: 100%;
+    }
+    button, select, input {
+      padding: 4px 8px;
+      font-size: 14px;
+    }
+    input[type="text"], input[type="password"] {
+      min-width: 180px;
+    }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <!-- File -->
+    <section>
+      <button id="openBtn">Open</button>
+      <button id="saveBtn">Save</button>
+    </section>
+
+    <!-- AI Actions -->
+    <section>
+      <button id="aiImprove">Improve</button>
+      <button id="aiSummarize">Summarize</button>
+      <input id="aiQuestion" type="text" placeholder="Ask a question..." />
+      <button id="aiAsk">Ask</button>
+    </section>
+
+    <!-- AI Settings -->
+    <section>
+      <label>Provider:</label>
+      <select id="provider">
+        <option value="openrouter" selected>OpenRouter</option>
+        <option value="openai">OpenAI</option>
+      </select>
+
+      <label>API Key:</label>
+      <input id="apiKey" type="password" placeholder="Enter API Key" />
+
+      <label>Model:</label>
+      <input id="modelId" type="text" value="deepseek/deepseek-r1-0528:free" />
+
+      <label>Mode:</label>
+      <select id="aiMode">
+        <option value="append">Append</option>
+        <option value="replace">Replace</option>
+      </select>
+    </section>
+  </div>
+
+  <div id="editor"></div>
+  <script type="module" src="./renderer.mjs"></script>
+</body>
+</html>
