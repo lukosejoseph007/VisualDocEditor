@@ -1,10 +1,4 @@
 .env
-Dev Documentation/Step1.md
-Dev Documentation/Step2.md
-Dev Documentation/Step3.md
-Dev Documentation/Step4.md
-Dev Documentation/Step5.md
-Dev Documentation/Steps1to4.md
 node_modules/.package-lock.json
 node_modules/.bin/electron
 node_modules/.bin/electron.cmd
