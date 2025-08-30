@@ -4,37 +4,79 @@
   <meta charset="UTF-8" />
   <title>VisualDocEditor</title>
   <style>
-    :root { --bg:#181818; --panel:#222; --text:#fff; --muted:#a0a0a0; --accent:#7aa2f7; }
+    :root { 
+      --bg:#181818; --panel:#222; --text:#fff; --muted:#a0a0a0; 
+      --accent:#7aa2f7; --success:#9ece6a; --warning:#e0af68; --error:#f7768e;
+    }
     html, body { margin:0; padding:0; height:100vh; width:100vw; font-family:system-ui, sans-serif; background:var(--bg); color:var(--text); }
     #toolbar { background:var(--panel); padding:8px; display:flex; flex-wrap:wrap; align-items:center; gap:10px; border-bottom:1px solid #333; }
-    #toolbar section { display:flex; align-items:center; gap:8px; }
-    button, select, input { padding:4px 8px; font-size:14px; border-radius:6px; border:1px solid #444; background:#2a2a2a; color:var(--text); }
+    #toolbar section { display:flex; align-items:center; gap:8px; position:relative; }
+    button, select, input { padding:4px 8px; font-size:14px; border-radius:6px; border:1px solid #444; background:#2a2a2a; color:var(--text); cursor:pointer; }
     button:hover { background:#3a3a3a; }
     button.context-mode { background:#1a4a5a; border-color:#2a6a7a; }
     button.context-mode:hover { background:#2a5a6a; }
-    input[type="text"], input[type="password"] { min-width:180px; }
+    input[type="text"], input[type="password"] { min-width:180px; cursor:text; }
     #main { display:flex; height:calc(100vh - 56px); width:100vw; }
     #sidebar { width:280px; background:#1b1b1b; border-right:1px solid #333; display:flex; flex-direction:column; }
     #folderHeader { padding:10px; border-bottom:1px solid #333; font-size:12px; color:var(--muted); word-break:break-all; }
     #contextIndicator { padding:6px 10px; background:#2a4a2a; border-bottom:1px solid #333; font-size:11px; }
     #fileSearchWrap { padding:8px; border-bottom:1px solid #333; }
     #fileList { flex:1; overflow:auto; list-style:none; margin:0; padding:4px 0; }
-    .fileItem { padding:8px 10px; cursor:pointer; border-bottom:1px solid #232323; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .fileItem { padding:8px 10px; cursor:pointer; border-bottom:1px solid #232323; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; justify-content:space-between; align-items:center; }
     .fileItem:hover { background:#262626; }
     .fileItem.active { background:#313131; border-left:3px solid var(--accent); }
     .fileItem.has-context { border-right:2px solid #4a6a4a; }
+    .fileItem .format-badge { font-size:10px; background:#444; color:#ccc; padding:2px 4px; border-radius:3px; margin-left:4px; }
     #editor { flex:1; min-width:0; }
     .pill { font-size:11px; color:#ccc; background:#333; padding:2px 6px; border-radius:999px; }
-    .status { font-size:11px; color:var(--muted); margin-left:8px; }
+
+    /* Model Dropdown Styles */
+    .model-dropdown { position:relative; }
+    .model-input-group { display:flex; align-items:center; gap:4px; }
+    #modelDropdown { min-width:200px; max-width:300px; }
+    .model-actions { display:flex; gap:2px; }
+    .model-btn { padding:2px 6px; font-size:12px; }
+    .dropdown-content { 
+      position:absolute; top:100%; left:0; background:#2a2a2a; border:1px solid #444; 
+      border-radius:6px; min-width:200px; max-height:200px; overflow-y:auto; z-index:1000;
+      display:none; box-shadow:0 4px 12px rgba(0,0,0,0.3);
+    }
+    .dropdown-content.show { display:block; }
+    .dropdown-item { 
+      padding:8px 12px; cursor:pointer; border-bottom:1px solid #333; 
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .dropdown-item:hover { background:#3a3a3a; }
+    .dropdown-item:last-child { border-bottom:none; }
+    .dropdown-item .model-name { flex:1; }
+    .dropdown-item .delete-btn { 
+      color:var(--error); font-size:12px; padding:2px 4px; 
+      border-radius:3px; opacity:0.7;
+    }
+    .dropdown-item .delete-btn:hover { opacity:1; background:rgba(247,118,142,0.2); }
+
+    /* Format indicator */
+    .format-indicator { 
+      position:absolute; top:-8px; right:-8px; background:var(--warning); 
+      color:#000; font-size:10px; padding:2px 6px; border-radius:10px; 
+      font-weight:bold;
+    }
   </style>
 </head>
 <body>
   <div id="toolbar">
-    <!-- File -->
+    <!-- File Operations -->
     <section>
       <button id="openFolderBtn">Open Folder</button>
       <button id="openBtn">Open File</button>
       <button id="saveBtn">Save</button>
+      <select id="exportFormat">
+        <option value="md">Export as MD</option>
+        <option value="docx">Export as DOCX</option>
+        <option value="html">Export as HTML</option>
+        <option value="txt">Export as TXT</option>
+      </select>
+      <button id="exportBtn">Export</button>
     </section>
 
     <!-- Single File AI -->
@@ -60,10 +102,24 @@
         <option value="openrouter" selected>OpenRouter</option>
         <option value="openai">OpenAI</option>
       </select>
+
       <label>API Key:</label>
       <input id="apiKey" type="password" placeholder="Enter API Key" />
-      <label>Model:</label>
-      <input id="modelId" type="text" value="deepseek/deepseek-r1-0528:free" />
+
+      <div class="model-dropdown">
+        <label>Model:</label>
+        <div class="model-input-group">
+          <select id="modelDropdown">
+            <option value="">Select or type model...</option>
+          </select>
+          <input id="modelInput" type="text" placeholder="Type model name..." style="min-width:180px;" />
+          <div class="model-actions">
+            <button id="addModelBtn" class="model-btn" title="Add current model to list">+</button>
+            <button id="clearModelsBtn" class="model-btn" title="Clear models list">Clear</button>
+          </div>
+        </div>
+      </div>
+
       <label>Mode:</label>
       <select id="aiMode">
         <option value="append">Append</option>

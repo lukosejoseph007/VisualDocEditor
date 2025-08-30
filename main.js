@@ -3,19 +3,52 @@ const path = require('path');
 const fs = require('fs');
 const OpenAI = require('openai');
 const natural = require('natural');
+const mammoth = require('mammoth');
+const pdfParse = require('pdf-parse');
+const officegen = require('officegen');
+const TurndownService = require('turndown');
+const showdown = require('showdown');
 
 const settingsFile = path.join(app.getPath('userData'), 'settings.json');
 const contextCacheFile = path.join(app.getPath('userData'), 'context-cache.json');
 
+// ---- Default settings with models list ----
+const defaultSettings = {
+  apiKey: '',
+  provider: 'openrouter',
+  lastModel: 'deepseek/deepseek-r1-0528:free',
+  aiMode: 'append',
+  models: [
+    'deepseek/deepseek-r1-0528:free',
+    'anthropic/claude-3-haiku:beta',
+    'openai/gpt-4o-mini',
+    'google/gemini-flash-1.5',
+    'meta-llama/llama-3.1-8b-instruct:free'
+  ]
+};
+
 // ---- Settings helpers ----
 function loadSettings() {
-  try { return JSON.parse(fs.readFileSync(settingsFile, 'utf-8')); } catch { return { apiKey: '' }; }
-}
-function saveSettings(settings) {
-  fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2));
+  try {
+    const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
+    // Ensure models array exists and has defaults
+    if (!settings.models || settings.models.length === 0) {
+      settings.models = [...defaultSettings.models];
+    }
+    return { ...defaultSettings, ...settings };
+  } catch {
+    return { ...defaultSettings };
+  }
 }
 
-// ---- Context cache helpers ----
+function saveSettings(settings) {
+  const current = loadSettings();
+  const updated = { ...current, ...settings };
+  fs.writeFileSync(settingsFile, JSON.stringify(updated, null, 2));
+  return updated;
+}
+
+// ---- Context cache helpers (from Step 6) ----
 let contextCache = { files: {}, lastUpdate: 0 };
 function loadContextCache() {
   try { contextCache = JSON.parse(fs.readFileSync(contextCacheFile, 'utf-8')); } catch { /* ignore */ }
@@ -28,9 +61,12 @@ function saveContextCache() {
 function createWindow() {
   loadContextCache();
   const win = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    webPreferences: { preload: path.join(__dirname, 'preload.js') }
+    width: 1400,
+    height: 900,
+    webPreferences: { 
+      preload: path.join(__dirname, 'preload.js'),
+      webSecurity: false // Allow local file access for document processing
+    }
   });
   if (process.env.NODE_ENV === 'development') {
     win.loadURL('http://localhost:5173');
@@ -39,16 +75,129 @@ function createWindow() {
   }
 }
 
-// ---- File Open/Save (existing) ----
+// ---- Document processing helpers ----
+async function readDocx(filePath) {
+  try {
+    const result = await mammoth.extractRawText({ path: filePath });
+    return { content: result.value, format: 'docx' };
+  } catch (err) {
+    throw new Error(`DOCX reading failed: ${err.message}`);
+  }
+}
+
+async function readPdf(filePath) {
+  try {
+    const dataBuffer = fs.readFileSync(filePath);
+    const data = await pdfParse(dataBuffer);
+    return { content: data.text, format: 'pdf' };
+  } catch (err) {
+    throw new Error(`PDF reading failed: ${err.message}`);
+  }
+}
+
+function readTxt(filePath) {
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    return { content, format: 'txt' };
+  } catch (err) {
+    throw new Error(`TXT reading failed: ${err.message}`);
+  }
+}
+
+function readMarkdown(filePath) {
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    return { content, format: 'md' };
+  } catch (err) {
+    throw new Error(`Markdown reading failed: ${err.message}`);
+  }
+}
+
+async function writeDocx(filePath, content) {
+  return new Promise((resolve, reject) => {
+    const docx = officegen('docx');
+    
+    // Convert markdown to plain text for now (basic implementation)
+    const turndownService = new TurndownService();
+    const plainText = turndownService.turndown(content);
+    
+    const pObj = docx.createP();
+    pObj.addText(plainText);
+    
+    const output = fs.createWriteStream(filePath);
+    docx.generate(output);
+    
+    output.on('close', () => resolve(true));
+    output.on('error', reject);
+  });
+}
+
+function writeHtml(filePath, content) {
+  const converter = new showdown.Converter();
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Document</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+           max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+    code { background: #f4f4f4; padding: 2px 4px; border-radius: 3px; }
+    pre { background: #f4f4f4; padding: 10px; border-radius: 5px; overflow-x: auto; }
+  </style>
+</head>
+<body>
+${converter.makeHtml(content)}
+</body>
+</html>`;
+  fs.writeFileSync(filePath, html, 'utf-8');
+}
+
+// ---- Enhanced File Operations ----
 ipcMain.handle('dialog:openFile', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog({
-    filters: [{ name: 'Markdown Files', extensions: ['md'] }],
+    filters: [
+      { name: 'All Supported', extensions: ['md', 'txt', 'docx', 'pdf'] },
+      { name: 'Markdown Files', extensions: ['md'] },
+      { name: 'Text Files', extensions: ['txt'] },
+      { name: 'Word Documents', extensions: ['docx'] },
+      { name: 'PDF Files', extensions: ['pdf'] }
+    ],
     properties: ['openFile']
   });
   if (canceled || filePaths.length === 0) return { canceled: true };
+  
   const filePath = filePaths[0];
-  const content = fs.readFileSync(filePath, 'utf-8');
-  return { canceled: false, filePath, content };
+  const ext = path.extname(filePath).toLowerCase();
+  
+  try {
+    let result;
+    switch (ext) {
+      case '.docx':
+        result = await readDocx(filePath);
+        break;
+      case '.pdf':
+        result = await readPdf(filePath);
+        break;
+      case '.txt':
+        result = readTxt(filePath);
+        break;
+      case '.md':
+      default:
+        result = readMarkdown(filePath);
+        break;
+    }
+    
+    return { 
+      canceled: false, 
+      filePath, 
+      content: result.content, 
+      format: result.format,
+      originalFormat: result.format
+    };
+  } catch (err) {
+    return { canceled: false, filePath, content: `Error reading file: ${err.message}`, format: 'error' };
+  }
 });
 
 ipcMain.handle('dialog:saveFile', async (event, { filePath, content }) => {
@@ -63,32 +212,77 @@ ipcMain.handle('dialog:saveFile', async (event, { filePath, content }) => {
   return { canceled: false, filePath };
 });
 
-// ---- Folder (existing) ----
+ipcMain.handle('dialog:exportFile', async (event, { filePath, content, format }) => {
+  const filters = {
+    md: [{ name: 'Markdown Files', extensions: ['md'] }],
+    docx: [{ name: 'Word Documents', extensions: ['docx'] }],
+    html: [{ name: 'HTML Files', extensions: ['html'] }],
+    txt: [{ name: 'Text Files', extensions: ['txt'] }]
+  };
+
+  const { canceled, filePath: exportPath } = await dialog.showSaveDialog({
+    filters: filters[format] || filters.md
+  });
+  
+  if (canceled) return { canceled: true };
+  
+  try {
+    switch (format) {
+      case 'docx':
+        await writeDocx(exportPath, content);
+        break;
+      case 'html':
+        writeHtml(exportPath, content);
+        break;
+      case 'txt':
+        // Convert markdown to plain text
+        const turndownService = new TurndownService();
+        const plainText = content.replace(/#{1,6}\s+/g, '').replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
+        fs.writeFileSync(exportPath, plainText, 'utf-8');
+        break;
+      case 'md':
+      default:
+        fs.writeFileSync(exportPath, content, 'utf-8');
+        break;
+    }
+    return { canceled: false, filePath: exportPath };
+  } catch (err) {
+    return { canceled: false, error: err.message };
+  }
+});
+
+// ---- Enhanced Folder Operations ----
 ipcMain.handle('dialog:openFolder', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog({ properties: ['openDirectory'] });
   if (canceled || filePaths.length === 0) return { canceled: true };
   const folderPath = filePaths[0];
-  const files = scanMarkdownFiles(folderPath);
+  const files = scanSupportedFiles(folderPath);
   return { canceled: false, folderPath, files };
 });
 
-function scanMarkdownFiles(root) {
+function scanSupportedFiles(root) {
   const out = [];
+  const supportedExts = ['.md', '.txt', '.docx', '.pdf'];
+  
   function walk(dir) {
     let entries = [];
     try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
     for (const e of entries) {
       const full = path.join(dir, e.name);
       if (e.isDirectory()) { walk(full); continue; }
-      if (e.isFile() && full.toLowerCase().endsWith('.md')) {
-        let stat = null;
-        try { stat = fs.statSync(full); } catch { stat = { size: 0, mtimeMs: 0 }; }
-        out.push({
-          name: e.name,
-          path: full,
-          size: stat.size,
-          mtime: stat.mtimeMs
-        });
+      if (e.isFile()) {
+        const ext = path.extname(full).toLowerCase();
+        if (supportedExts.includes(ext)) {
+          let stat = null;
+          try { stat = fs.statSync(full); } catch { stat = { size: 0, mtimeMs: 0 }; }
+          out.push({
+            name: e.name,
+            path: full,
+            size: stat.size,
+            mtime: stat.mtimeMs,
+            format: ext.slice(1) // remove dot
+          });
+        }
       }
     }
   }
@@ -99,30 +293,90 @@ function scanMarkdownFiles(root) {
 
 ipcMain.handle('fs:readFile', async (event, { filePath }) => {
   try {
-    const content = fs.readFileSync(filePath, 'utf-8');
-    return { ok: true, content };
+    const ext = path.extname(filePath).toLowerCase();
+    let result;
+    
+    switch (ext) {
+      case '.docx':
+        result = await readDocx(filePath);
+        break;
+      case '.pdf':
+        result = await readPdf(filePath);
+        break;
+      case '.txt':
+        result = readTxt(filePath);
+        break;
+      case '.md':
+      default:
+        result = readMarkdown(filePath);
+        break;
+    }
+    
+    return { ok: true, content: result.content, format: result.format };
   } catch (err) {
     return { ok: false, error: String(err) };
   }
 });
 
-// ---- NEW: Context building ----
+// ---- Model Management ----
+ipcMain.handle('models:add', async (event, { model }) => {
+  const settings = loadSettings();
+  if (!settings.models.includes(model)) {
+    settings.models.unshift(model); // Add to beginning
+    // Keep only last 20 models
+    if (settings.models.length > 20) {
+      settings.models = settings.models.slice(0, 20);
+    }
+  }
+  return saveSettings(settings);
+});
+
+ipcMain.handle('models:remove', async (event, { model }) => {
+  const settings = loadSettings();
+  settings.models = settings.models.filter(m => m !== model);
+  return saveSettings(settings);
+});
+
+ipcMain.handle('models:clear', async () => {
+  const settings = loadSettings();
+  settings.models = [...defaultSettings.models]; // Reset to defaults
+  return saveSettings(settings);
+});
+
+// ---- Context Building (from Step 6) ----
 ipcMain.handle('context:build', async (event, { folderPath }) => {
-  const files = scanMarkdownFiles(folderPath);
+  const files = scanSupportedFiles(folderPath);
   const processedFiles = [];
   
   for (const file of files) {
     try {
-      const content = fs.readFileSync(file.path, 'utf-8');
+      let content;
+      const ext = path.extname(file.path).toLowerCase();
+      
+      // Only process text-based files for context
+      if (['.md', '.txt'].includes(ext)) {
+        content = fs.readFileSync(file.path, 'utf-8');
+      } else if (ext === '.docx') {
+        const result = await readDocx(file.path);
+        content = result.content;
+      } else if (ext === '.pdf') {
+        const result = await readPdf(file.path);
+        content = result.content;
+      } else {
+        continue; // Skip unsupported formats for context
+      }
+      
       const processed = processFileContent(content, file.path);
       contextCache.files[file.path] = {
         ...processed,
         mtime: file.mtime,
-        size: file.size
+        size: file.size,
+        format: file.format
       };
       processedFiles.push({
         path: file.path,
         name: file.name,
+        format: file.format,
         hasContext: true,
         wordCount: processed.wordCount,
         keyTerms: processed.keyTerms.slice(0, 5)
@@ -132,6 +386,7 @@ ipcMain.handle('context:build', async (event, { folderPath }) => {
       processedFiles.push({
         path: file.path,
         name: file.name,
+        format: file.format,
         hasContext: false,
         error: err.message
       });
@@ -149,29 +404,25 @@ ipcMain.handle('context:build', async (event, { folderPath }) => {
 });
 
 function processFileContent(content, filePath) {
-  // Basic text processing
+  // Same as Step 6
   const words = natural.WordTokenizer.tokenize(content.toLowerCase()) || [];
   const sentences = natural.SentenceTokenizer.tokenize(content) || [];
   
-  // Extract key terms (filter out common words)
   const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them']);
   const filteredWords = words.filter(word => 
     word && word.length > 2 && !stopWords.has(word) && !/^\d+$/.test(word)
   );
   
-  // Count word frequency
   const wordFreq = {};
   filteredWords.forEach(word => {
     wordFreq[word] = (wordFreq[word] || 0) + 1;
   });
   
-  // Get key terms by frequency
   const keyTerms = Object.entries(wordFreq)
     .sort(([,a], [,b]) => b - a)
     .slice(0, 20)
     .map(([word]) => word);
   
-  // Simple TF-IDF vector (we'll use word frequency as a simple vector)
   const vector = keyTerms.reduce((vec, term) => {
     vec[term] = wordFreq[term] || 0;
     return vec;
@@ -203,7 +454,6 @@ function extractHeadings(content) {
   return headings;
 }
 
-// ---- NEW: Find related files ----
 ipcMain.handle('context:related', async (event, { filePath, query }) => {
   const currentFile = contextCache.files[filePath];
   if (!currentFile) return { files: [] };
@@ -216,7 +466,6 @@ ipcMain.handle('context:related', async (event, { filePath, query }) => {
     
     let similarity = 0;
     
-    // Check for query word matches
     queryWords.forEach(word => {
       if (fileData.keyTerms.includes(word)) {
         similarity += 2;
@@ -226,7 +475,6 @@ ipcMain.handle('context:related', async (event, { filePath, query }) => {
       }
     });
     
-    // Check for key term overlap with current file
     currentFile.keyTerms.forEach(term => {
       if (fileData.keyTerms.includes(term)) {
         similarity += 1;
@@ -248,7 +496,7 @@ ipcMain.handle('context:related', async (event, { filePath, query }) => {
   return { files: relatedFiles.slice(0, 5) };
 });
 
-// ---- AI Actions (existing) ----
+// ---- AI Actions (enhanced) ----
 ipcMain.handle('ai:action', async (event, { provider, apiKey, modelId, mode, text }) => {
   let systemPrompt = '';
   if (mode === 'improve') systemPrompt = 'Improve this text while keeping the meaning.';
@@ -274,12 +522,11 @@ ipcMain.handle('ai:action', async (event, { provider, apiKey, modelId, mode, tex
   }
 });
 
-// ---- NEW: Multi-file AI Actions ----
+// ---- Multi-file AI Actions (from Step 6) ----
 ipcMain.handle('ai:multifile', async (event, { provider, apiKey, modelId, mode, currentFile, relatedFiles, query }) => {
   let systemPrompt = '';
   let contextText = '';
   
-  // Build context from related files
   if (relatedFiles && relatedFiles.length > 0) {
     contextText = 'RELATED DOCUMENTS:\n\n';
     relatedFiles.forEach(file => {
@@ -323,9 +570,9 @@ ipcMain.handle('ai:multifile', async (event, { provider, apiKey, modelId, mode, 
   }
 });
 
-// ---- Settings (existing) ----
+// ---- Settings (enhanced with model persistence) ----
 ipcMain.handle('settings:load', () => loadSettings());
-ipcMain.handle('settings:save', (event, settings) => { saveSettings(settings); return true; });
+ipcMain.handle('settings:save', (event, settings) => saveSettings(settings));
 
 app.whenReady().then(createWindow);
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
