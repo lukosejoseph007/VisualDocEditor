@@ -8,9 +8,12 @@ const pdfParse = require('pdf-parse');
 const officegen = require('officegen');
 const TurndownService = require('turndown');
 const showdown = require('showdown');
+const JSZip = require('jszip');
+const xml2js = require('xml2js');
+const pptxgen = require('pptxgenjs');
 
-const settingsFile = path.join(app.getPath('userData'), 'settings.json');
-const contextCacheFile = path.join(app.getPath('userData'), 'context-cache.json');
+// Will be initialized after app is ready
+let settingsFile, contextCacheFile;
 
 // ---- Default settings with models list ----
 const defaultSettings = {
@@ -75,6 +78,23 @@ function createWindow() {
   }
 }
 
+// Initialize app paths after Electron is ready
+app.whenReady().then(() => {
+  settingsFile = path.join(app.getPath('userData'), 'settings.json');
+  contextCacheFile = path.join(app.getPath('userData'), 'context-cache.json');
+  
+  // Create window after paths are initialized
+  createWindow();
+  
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  });
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit();
+});
+
 // ---- Document processing helpers ----
 async function readDocx(filePath) {
   try {
@@ -83,6 +103,54 @@ async function readDocx(filePath) {
   } catch (err) {
     throw new Error(`DOCX reading failed: ${err.message}`);
   }
+}
+
+async function readPptx(filePath) {
+  try {
+    const content = await extractTextFromPPTX(filePath);
+    return { content, format: 'pptx' };
+  } catch (err) {
+    throw new Error(`PPTX reading failed: ${err.message}`);
+  }
+}
+
+async function extractTextFromPPTX(filePath) {
+  const data = fs.readFileSync(filePath);
+  const zip = await JSZip.loadAsync(data);
+  
+  let textContent = [];
+  let slideCount = 0;
+  
+  // Find all slide files
+  zip.forEach((relativePath, file) => {
+    if (relativePath.startsWith('ppt/slides/slide') && relativePath.endsWith('.xml')) {
+      slideCount++;
+    }
+  });
+
+  // Process each slide
+  for (let i = 1; i <= slideCount; i++) {
+    const slidePath = `ppt/slides/slide${i}.xml`;
+    if (!zip.files[slidePath]) continue;
+
+    const slideContent = await zip.file(slidePath).async('string');
+    const parser = new xml2js.Parser();
+    const result = await parser.parseStringPromise(slideContent);
+    
+    // Extract text from slide
+    const extractText = (obj) => {
+      if (typeof obj === 'string') return obj;
+      if (obj['a:t']) return obj['a:t'].map(t => t._ || t).join(' ');
+      if (obj['a:r']) return obj['a:r'].map(extractText).join(' ');
+      if (obj['a:p']) return obj['a:p'].map(extractText).join('\n');
+      return Object.values(obj).map(extractText).join(' ');
+    };
+
+    const slideText = extractText(result);
+    textContent.push(`Slide ${i}:\n${slideText}\n`);
+  }
+
+  return textContent.join('\n');
 }
 
 async function readPdf(filePath) {
@@ -132,6 +200,29 @@ async function writeDocx(filePath, content) {
   });
 }
 
+async function writePptx(filePath, content) {
+  try {
+    const pptx = new pptxgen();
+    
+    // Create a slide and add the content as text
+    const slide = pptx.addSlide();
+    slide.addText(content, {
+      x: 0.5,
+      y: 0.5,
+      w: 9,
+      h: 6.5,
+      fontSize: 12,
+      align: 'left',
+      valign: 'top'
+    });
+    
+    await pptx.writeFile(filePath);
+    return true;
+  } catch (err) {
+    throw new Error(`PPTX writing failed: ${err.message}`);
+  }
+}
+
 function writeHtml(filePath, content) {
   const converter = new showdown.Converter();
   const html = `<!DOCTYPE html>
@@ -157,11 +248,12 @@ ${converter.makeHtml(content)}
 ipcMain.handle('dialog:openFile', async () => {
   const { canceled, filePaths } = await dialog.showOpenDialog({
     filters: [
-      { name: 'All Supported', extensions: ['md', 'txt', 'docx', 'pdf'] },
+      { name: 'All Supported', extensions: ['md', 'txt', 'docx', 'pdf', 'pptx'] },
       { name: 'Markdown Files', extensions: ['md'] },
       { name: 'Text Files', extensions: ['txt'] },
       { name: 'Word Documents', extensions: ['docx'] },
-      { name: 'PDF Files', extensions: ['pdf'] }
+      { name: 'PDF Files', extensions: ['pdf'] },
+      { name: 'PowerPoint Files', extensions: ['pptx'] }
     ],
     properties: ['openFile']
   });
@@ -178,6 +270,9 @@ ipcMain.handle('dialog:openFile', async () => {
         break;
       case '.pdf':
         result = await readPdf(filePath);
+        break;
+      case '.pptx':
+        result = await readPptx(filePath);
         break;
       case '.txt':
         result = readTxt(filePath);
@@ -216,6 +311,7 @@ ipcMain.handle('dialog:exportFile', async (event, { filePath, content, format })
   const filters = {
     md: [{ name: 'Markdown Files', extensions: ['md'] }],
     docx: [{ name: 'Word Documents', extensions: ['docx'] }],
+    pptx: [{ name: 'PowerPoint Files', extensions: ['pptx'] }],
     html: [{ name: 'HTML Files', extensions: ['html'] }],
     txt: [{ name: 'Text Files', extensions: ['txt'] }]
   };
@@ -230,6 +326,9 @@ ipcMain.handle('dialog:exportFile', async (event, { filePath, content, format })
     switch (format) {
       case 'docx':
         await writeDocx(exportPath, content);
+        break;
+      case 'pptx':
+        await writePptx(exportPath, content);
         break;
       case 'html':
         writeHtml(exportPath, content);
@@ -262,7 +361,7 @@ ipcMain.handle('dialog:openFolder', async () => {
 
 function scanSupportedFiles(root) {
   const out = [];
-  const supportedExts = ['.md', '.txt', '.docx', '.pdf'];
+  const supportedExts = ['.md', '.txt', '.docx', '.pdf', '.pptx'];
   
   function walk(dir) {
     let entries = [];
@@ -303,6 +402,9 @@ ipcMain.handle('fs:readFile', async (event, { filePath }) => {
       case '.pdf':
         result = await readPdf(filePath);
         break;
+      case '.pptx':
+        result = await readPptx(filePath);
+        break;
       case '.txt':
         result = readTxt(filePath);
         break;
@@ -316,6 +418,15 @@ ipcMain.handle('fs:readFile', async (event, { filePath }) => {
   } catch (err) {
     return { ok: false, error: String(err) };
   }
+});
+
+// ---- Settings Management ----
+ipcMain.handle('settings:load', async () => {
+  return loadSettings();
+});
+
+ipcMain.handle('settings:save', async (event, newSettings) => {
+  return saveSettings(newSettings);
 });
 
 // ---- Model Management ----
@@ -341,6 +452,55 @@ ipcMain.handle('models:clear', async () => {
   const settings = loadSettings();
   settings.models = [...defaultSettings.models]; // Reset to defaults
   return saveSettings(settings);
+});
+
+// ---- AI Actions ----
+ipcMain.handle('ai:action', async (event, { provider, apiKey, modelId, mode, text }) => {
+  try {
+    // Create OpenAI client based on provider
+    const openai = new OpenAI({
+      apiKey,
+      baseURL: provider === 'openrouter' 
+        ? 'https://openrouter.ai/api/v1' 
+        : undefined
+    });
+
+    // Create system prompt based on action mode
+    let systemPrompt;
+    switch (mode) {
+      case 'improve':
+        systemPrompt = 'You are a writing assistant. Improve the following text while preserving its meaning:';
+        break;
+      case 'summarize':
+        systemPrompt = 'You are a summarization assistant. Create a concise summary of the following text:';
+        break;
+      case 'ask':
+        systemPrompt = 'You are a helpful assistant. Answer the user\'s question based on the provided context:';
+        break;
+      default:
+        systemPrompt = 'You are a helpful assistant. Perform the requested action:';
+    }
+
+    // Call the AI API
+    const response = await openai.chat.completions.create({
+      model: modelId,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: text }
+      ],
+      max_tokens: 2000
+    });
+
+    return response.choices[0].message.content;
+  } catch (err) {
+    console.error('AI request failed:', err);
+    return `AI Error: ${err.message}`;
+  }
+});
+
+// ---- AI Multi-File Actions (placeholder) ----
+ipcMain.handle('aiMultiFileAction', async (event, { provider, apiKey, modelId, mode, currentFile, relatedFiles, query }) => {
+  return "Multi-file AI features are not implemented in this version.";
 });
 
 // ---- Context Building (from Step 6) ----
@@ -495,84 +655,3 @@ ipcMain.handle('context:related', async (event, { filePath, query }) => {
   relatedFiles.sort((a, b) => b.similarity - a.similarity);
   return { files: relatedFiles.slice(0, 5) };
 });
-
-// ---- AI Actions (enhanced) ----
-ipcMain.handle('ai:action', async (event, { provider, apiKey, modelId, mode, text }) => {
-  let systemPrompt = '';
-  if (mode === 'improve') systemPrompt = 'Improve this text while keeping the meaning.';
-  else if (mode === 'summarize') systemPrompt = 'Summarize this text concisely.';
-  else if (mode === 'ask') systemPrompt = 'Answer the question based on the provided text.';
-
-  let baseURL = 'https://api.openai.com/v1';
-  if (provider === 'openrouter') baseURL = 'https://openrouter.ai/api/v1';
-
-  const client = new OpenAI({ apiKey, baseURL });
-  try {
-    const completion = await client.chat.completions.create({
-      model: modelId,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: text }
-      ]
-    });
-    return completion.choices[0].message.content;
-  } catch (err) {
-    console.error('AI error:', err);
-    return `Error: ${err.message}`;
-  }
-});
-
-// ---- Multi-file AI Actions (from Step 6) ----
-ipcMain.handle('ai:multifile', async (event, { provider, apiKey, modelId, mode, currentFile, relatedFiles, query }) => {
-  let systemPrompt = '';
-  let contextText = '';
-  
-  if (relatedFiles && relatedFiles.length > 0) {
-    contextText = 'RELATED DOCUMENTS:\n\n';
-    relatedFiles.forEach(file => {
-      const fileData = contextCache.files[file.path];
-      if (fileData) {
-        contextText += `FILE: ${file.name}\n`;
-        contextText += `${fileData.summary}\n`;
-        contextText += `Key concepts: ${fileData.keyTerms.slice(0, 5).join(', ')}\n\n`;
-      }
-    });
-    contextText += `CURRENT DOCUMENT: ${path.basename(currentFile.path)}\n`;
-    contextText += `${currentFile.content}\n\n`;
-  }
-  
-  if (mode === 'explain') {
-    systemPrompt = 'Explain the concepts in the current document using context from related documents. Focus on connections and relationships.';
-  } else if (mode === 'connect') {
-    systemPrompt = 'Find and explain connections between the current document and the related documents provided.';
-  } else if (mode === 'overview') {
-    systemPrompt = 'Provide an overview of all the documents, showing how they relate to each other and what the main themes are.';
-  } else if (mode === 'find') {
-    systemPrompt = 'Find information related to the query across all provided documents and summarize the findings.';
-  }
-
-  let baseURL = 'https://api.openai.com/v1';
-  if (provider === 'openrouter') baseURL = 'https://openrouter.ai/api/v1';
-
-  const client = new OpenAI({ apiKey, baseURL });
-  try {
-    const completion = await client.chat.completions.create({
-      model: modelId,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: contextText + (query ? `\n\nQuery: ${query}` : '') }
-      ]
-    });
-    return completion.choices[0].message.content;
-  } catch (err) {
-    console.error('Multi-file AI error:', err);
-    return `Error: ${err.message}`;
-  }
-});
-
-// ---- Settings (enhanced with model persistence) ----
-ipcMain.handle('settings:load', () => loadSettings());
-ipcMain.handle('settings:save', (event, settings) => saveSettings(settings));
-
-app.whenReady().then(createWindow);
-app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });

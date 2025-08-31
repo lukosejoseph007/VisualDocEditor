@@ -1,4 +1,5 @@
 import * as monaco from 'monaco-editor';
+import * as path from 'path';
 
 // --- Editor setup ---
 const editorContainer = document.getElementById('editor');
@@ -127,7 +128,8 @@ function getFormatDisplayName(format) {
     txt: 'Text',
     docx: 'Word',
     pdf: 'PDF',
-    html: 'HTML'
+    html: 'HTML',
+    pptx: 'PowerPoint'
   };
   return formats[format] || format.toUpperCase();
 }
@@ -212,7 +214,8 @@ async function loadFileIntoEditor(filePath) {
     txt: 'plaintext',
     docx: 'plaintext',
     pdf: 'plaintext',
-    html: 'html'
+    html: 'html',
+    pptx: 'plaintext'
   };
   
   monaco.editor.setModelLanguage(editor.getModel(), languageMap[currentFileFormat] || 'plaintext');
@@ -220,8 +223,8 @@ async function loadFileIntoEditor(filePath) {
   editor.setValue(resp.content);
   lastLoadedContent = resp.content;
   
-  // Update window title with format info
-  document.title = `VisualDocEditor - ${path.basename(filePath)} (${getFormatDisplayName(currentFileFormat)})`;
+    // Update window title with format info
+    document.title = `VisualDocEditor - ${path.basename(filePath)} (${getFormatDisplayName(currentFileFormat)})`;
 }
 
 // --- Build context for folder ---

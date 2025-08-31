@@ -10,14 +10,16 @@
   },
   "dependencies": {
     "dotenv": "^16.4.5",
-    "monaco-editor": "^0.52.2",
-    "openai": "^4.0.0",
-    "natural": "^6.12.0",
     "mammoth": "^1.6.0",
-    "pdf-parse": "^1.1.1",
+    "monaco-editor": "^0.52.2",
+    "natural": "^6.12.0",
     "officegen": "^0.6.5",
+    "openai": "^4.0.0",
+    "pdf-parse": "^1.1.1",
+    "pptxgenjs": "^3.12.0",
+    "showdown": "^2.1.0",
     "turndown": "^7.1.2",
-    "showdown": "^2.1.0"
+    "xml2js": "^0.6.2"
   },
   "devDependencies": {
     "electron": "^31.0.0",
