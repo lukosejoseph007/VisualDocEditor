@@ -14,7 +14,7 @@ contextBridge.exposeInMainWorld('api', {
 
   // AI
   aiAction: (data) => ipcRenderer.invoke('ai:action', data),
-  aiMultiFileAction: (data) => ipcRenderer.invoke('ai:multifile', data),
+  aiMultiFileAction: (data) => ipcRenderer.invoke('aiMultiFileAction', data),
 
   // Settings & Models
   loadSettings: () => ipcRenderer.invoke('settings:load'),

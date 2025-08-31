@@ -5,6 +5,8 @@ const path = require('path');
 class AIService {
   constructor() {
     this.natural = natural;
+    this.wordTokenizer = new natural.WordTokenizer();
+    this.sentenceTokenizer = new natural.SentenceTokenizer();
   }
 
   async performAction({ provider, apiKey, modelId, mode, text }) {
@@ -51,8 +53,8 @@ class AIService {
   }
 
   processFileContent(content, filePath) {
-    const words = this.natural.WordTokenizer.tokenize(content.toLowerCase()) || [];
-    const sentences = this.natural.SentenceTokenizer.tokenize(content) || [];
+    const words = this.wordTokenizer.tokenize(content.toLowerCase()) || [];
+    const sentences = this.sentenceTokenizer.tokenize(content) || [];
     
     const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them']);
     const filteredWords = words.filter(word => 
@@ -104,7 +106,7 @@ class AIService {
     const currentFile = contextCache.files[filePath];
     if (!currentFile) return { files: [] };
     
-    const queryWords = this.natural.WordTokenizer.tokenize(query.toLowerCase()) || [];
+    const queryWords = this.wordTokenizer.tokenize(query.toLowerCase()) || [];
     const relatedFiles = [];
     
     for (const [fPath, fileData] of Object.entries(contextCache.files)) {

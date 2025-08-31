@@ -1,0 +1,9 @@
+This is a plain text file for testing.
+
+VisualDocEditor supports multiple file formats including:
+- Markdown (.md)
+- Text files (.txt)
+- Word documents (.docx)
+- PDF files (.pdf)
+
+The context building feature analyzes all supported files in a folder and creates semantic connections between them.

@@ -173,62 +173,91 @@ class VisualDocEditor {
 
     // Context Building
     ipcMain.handle('context:build', async (event, { folderPath }) => {
-      const files = this.fileHandler.scanSupportedFiles(folderPath);
-      const processedFiles = [];
-      
-      for (const file of files) {
-        try {
-          let content;
-          const ext = path.extname(file.path).toLowerCase();
-          
-          // Only process text-based files for context
-          if (['.md', '.txt'].includes(ext)) {
-            content = fs.readFileSync(file.path, 'utf-8');
-          } else if (ext === '.docx') {
-            const result = await this.fileHandler.readDocx(file.path);
-            content = result.content;
-          } else if (ext === '.pdf') {
-            const result = await this.fileHandler.readPdf(file.path);
-            content = result.content;
-          } else {
-            continue; // Skip unsupported formats for context
+      console.log('Context building started for folder:', folderPath);
+      try {
+        const files = this.fileHandler.scanSupportedFiles(folderPath);
+        console.log('Found', files.length, 'supported files');
+        
+        const processedFiles = [];
+        
+        for (const file of files) {
+          try {
+            console.log('Processing file:', file.path);
+            let content;
+            const ext = path.extname(file.path).toLowerCase();
+            
+            // Only process text-based files for context
+            if (['.md', '.txt'].includes(ext)) {
+              content = fs.readFileSync(file.path, 'utf-8');
+              console.log('Read text file:', file.path, 'content length:', content.length);
+            } else if (ext === '.docx') {
+              console.log('Reading DOCX file:', file.path);
+              const result = await this.fileHandler.readDocx(file.path);
+              content = result.content;
+              console.log('DOCX content length:', content.length);
+            } else if (ext === '.pdf') {
+              console.log('Reading PDF file:', file.path);
+              const result = await this.fileHandler.readPdf(file.path);
+              content = result.content;
+              console.log('PDF content length:', content.length);
+            } else if (ext === '.pptx') {
+              console.log('Reading PPTX file:', file.path);
+              const result = await this.fileHandler.readPptx(file.path);
+              content = result.content;
+              console.log('PPTX content length:', content.length);
+            } else {
+              console.log('Skipping unsupported format:', ext);
+              continue; // Skip unsupported formats for context
+            }
+            
+            console.log('Processing content for NLP analysis...');
+            const processed = this.aiService.processFileContent(content, file.path);
+            this.contextCache.files[file.path] = {
+              ...processed,
+              mtime: file.mtime,
+              size: file.size,
+              format: file.format
+            };
+            processedFiles.push({
+              path: file.path,
+              name: file.name,
+              format: file.format,
+              hasContext: true,
+              wordCount: processed.wordCount,
+              keyTerms: processed.keyTerms.slice(0, 5)
+            });
+            console.log('Successfully processed:', file.path);
+          } catch (err) {
+            console.error('Error processing file:', file.path, err);
+            processedFiles.push({
+              path: file.path,
+              name: file.name,
+              format: file.format,
+              hasContext: false,
+              error: err.message
+            });
           }
-          
-          const processed = this.aiService.processFileContent(content, file.path);
-          this.contextCache.files[file.path] = {
-            ...processed,
-            mtime: file.mtime,
-            size: file.size,
-            format: file.format
-          };
-          processedFiles.push({
-            path: file.path,
-            name: file.name,
-            format: file.format,
-            hasContext: true,
-            wordCount: processed.wordCount,
-            keyTerms: processed.keyTerms.slice(0, 5)
-          });
-        } catch (err) {
-          console.error('Error processing file:', file.path, err);
-          processedFiles.push({
-            path: file.path,
-            name: file.name,
-            format: file.format,
-            hasContext: false,
-            error: err.message
-          });
         }
+        
+        this.contextCache.lastUpdate = Date.now();
+        this.settingsService.saveContextCache(this.contextCache);
+        
+        console.log('Context building completed. Processed', processedFiles.length, 'files');
+        
+        return {
+          success: true,
+          filesProcessed: processedFiles.length,
+          files: processedFiles
+        };
+      } catch (error) {
+        console.error('Context building failed completely:', error);
+        return {
+          success: false,
+          error: error.message,
+          filesProcessed: 0,
+          files: []
+        };
       }
-      
-      this.contextCache.lastUpdate = Date.now();
-      this.settingsService.saveContextCache(this.contextCache);
-      
-      return {
-        success: true,
-        filesProcessed: processedFiles.length,
-        files: processedFiles
-      };
     });
 
     ipcMain.handle('context:related', async (event, { filePath, query }) => {

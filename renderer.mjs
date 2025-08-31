@@ -1,5 +1,33 @@
 import * as monaco from 'monaco-editor';
-import * as path from 'path';
+
+// Browser-compatible path utilities
+function basename(filePath) {
+  return filePath.split(/[\\/]/).pop();
+}
+
+function extname(filePath) {
+  const match = filePath.match(/\.[^.\\/]*$/);
+  return match ? match[0] : '';
+}
+
+// Configure Monaco Editor workers
+self.MonacoEnvironment = {
+  getWorkerUrl: function (moduleId, label) {
+    if (label === 'json') {
+      return './node_modules/monaco-editor/esm/vs/language/json/json.worker.js';
+    }
+    if (label === 'css' || label === 'scss' || label === 'less') {
+      return './node_modules/monaco-editor/esm/vs/language/css/css.worker.js';
+    }
+    if (label === 'html' || label === 'handlebars' || label === 'razor') {
+      return './node_modules/monaco-editor/esm/vs/language/html/html.worker.js';
+    }
+    if (label === 'typescript' || label === 'javascript') {
+      return './node_modules/monaco-editor/esm/vs/language/typescript/ts.worker.js';
+    }
+    return './node_modules/monaco-editor/esm/vs/editor/editor.worker.js';
+  }
+};
 
 // --- Editor setup ---
 const editorContainer = document.getElementById('editor');
@@ -224,16 +252,20 @@ async function loadFileIntoEditor(filePath) {
   lastLoadedContent = resp.content;
   
     // Update window title with format info
-    document.title = `VisualDocEditor - ${path.basename(filePath)} (${getFormatDisplayName(currentFileFormat)})`;
+    document.title = `VisualDocEditor - ${basename(filePath)} (${getFormatDisplayName(currentFileFormat)})`;
 }
 
 // --- Build context for folder ---
 async function buildFolderContext(folderPath) {
   updateContextIndicator('Building...');
   contextReady = false;
+  console.log('Starting context building for folder:', folderPath);
   
   try {
+    console.log('Calling window.api.buildContext...');
     const result = await window.api.buildContext(folderPath);
+    console.log('Context building result:', result);
+    
     if (result.success) {
       contextReady = true;
       updateContextIndicator(`Ready (${result.filesProcessed} files)`);
@@ -245,6 +277,7 @@ async function buildFolderContext(folderPath) {
       });
       renderFiles(files);
     } else {
+      console.error('Context building failed:', result);
       updateContextIndicator('Failed');
     }
   } catch (err) {
@@ -303,14 +336,14 @@ document.getElementById('openBtn').addEventListener('click', async () => {
     
     editor.setValue(result.content);
     lastLoadedContent = result.content;
-    document.title = `VisualDocEditor - ${path.basename(currentFilePath)} (${getFormatDisplayName(currentFileFormat)})`;
+    document.title = `VisualDocEditor - ${basename(currentFilePath)} (${getFormatDisplayName(currentFileFormat)})`;
 
     // Update sidebar if file is in current folder
     if (currentFolderPath && currentFilePath.startsWith(currentFolderPath)) {
       if (!files.find((f) => f.path === currentFilePath)) {
-        const ext = path.extname(currentFilePath).toLowerCase();
+        const ext = extname(currentFilePath).toLowerCase();
         files.push({ 
-          name: path.basename(currentFilePath), 
+          name: basename(currentFilePath), 
           path: currentFilePath, 
           size: result.content.length, 
           mtime: Date.now(),
@@ -335,13 +368,13 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
   if (!result.canceled) {
     currentFilePath = result.filePath;
     lastLoadedContent = content;
-    document.title = `VisualDocEditor - ${path.basename(currentFilePath)} (${getFormatDisplayName(currentFileFormat)})`;
+    document.title = `VisualDocEditor - ${basename(currentFilePath)} (${getFormatDisplayName(currentFileFormat)})`;
     
     if (currentFolderPath && currentFilePath.startsWith(currentFolderPath)) {
       if (!files.find((f) => f.path === currentFilePath)) {
-        const ext = path.extname(currentFilePath).toLowerCase();
+        const ext = extname(currentFilePath).toLowerCase();
         files.push({ 
-          name: path.basename(currentFilePath), 
+          name: basename(currentFilePath), 
           path: currentFilePath, 
           size: content.length, 
           mtime: Date.now(),
