@@ -5,79 +5,403 @@
   <title>VisualDocEditor</title>
   <style>
     :root { 
-      --bg:#181818; --panel:#222; --text:#fff; --muted:#a0a0a0; 
-      --accent:#7aa2f7; --success:#9ece6a; --warning:#e0af68; --error:#f7768e;
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #0d9488;
+      --accent-light: #14b8a6;
+      --accent-dark: #0f766e;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --border: #334155;
+      --hover: #2d3748;
+      --active: #374151;
     }
-    html, body { margin:0; padding:0; height:100vh; width:100vw; font-family:system-ui, sans-serif; background:var(--bg); color:var(--text); }
-    #toolbar { background:var(--panel); padding:8px; display:flex; flex-wrap:wrap; align-items:center; gap:10px; border-bottom:1px solid #333; }
-    #toolbar section { display:flex; align-items:center; gap:8px; position:relative; }
-    button, select, input { padding:4px 8px; font-size:14px; border-radius:6px; border:1px solid #444; background:#2a2a2a; color:var(--text); cursor:pointer; }
-    button:hover { background:#3a3a3a; }
-    button.context-mode { background:#1a4a5a; border-color:#2a6a7a; }
-    button.context-mode:hover { background:#2a5a6a; }
-    input[type="text"], input[type="password"] { min-width:180px; cursor:text; }
-    #main { display:flex; height:calc(100vh - 56px); width:100vw; }
-    #sidebar { width:280px; background:#1b1b1b; border-right:1px solid #333; display:flex; flex-direction:column; }
-    #folderHeader { padding:10px; border-bottom:1px solid #333; font-size:12px; color:var(--muted); word-break:break-all; }
-    #contextIndicator { padding:6px 10px; background:#2a4a2a; border-bottom:1px solid #333; font-size:11px; }
-    #fileSearchWrap { padding:8px; border-bottom:1px solid #333; }
-    #fileList { flex:1; overflow:auto; list-style:none; margin:0; padding:4px 0; }
-    .fileItem { padding:8px 10px; cursor:pointer; border-bottom:1px solid #232323; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; justify-content:space-between; align-items:center; }
-    .fileItem:hover { background:#262626; }
-    .fileItem.active { background:#313131; border-left:3px solid var(--accent); }
-    .fileItem.has-context { border-right:2px solid #4a6a4a; }
-    .fileItem .format-badge { font-size:10px; background:#444; color:#ccc; padding:2px 4px; border-radius:3px; margin-left:4px; }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    html, body { 
+      height: 100vh; 
+      width: 100vw; 
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg); 
+      color: var(--text);
+      overflow: hidden;
+    }
+    
+    /* Improved Toolbar */
+    #toolbar { 
+      background: var(--panel); 
+      padding: 12px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    #toolbar section { 
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: relative;
+    }
+    
+    /* Improved Buttons and Inputs */
+    button, select, input { 
+      padding: 8px 16px;
+      font-size: 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-weight: 500;
+    }
+    
+    button:hover, select:hover {
+      background: var(--hover);
+      border-color: var(--accent-light);
+      transform: translateY(-1px);
+    }
+    
+    button:active, select:active {
+      transform: translateY(0);
+    }
+    
+    button.context-mode { 
+      background: var(--accent-dark);
+      border-color: var(--accent);
+      color: white;
+    }
+    
+    button.context-mode:hover { 
+      background: var(--accent);
+      border-color: var(--accent-light);
+    }
+    
+    input[type="text"], input[type="password"] { 
+      min-width: 200px;
+      cursor: text;
+      background: var(--bg);
+      padding: 8px 12px;
+    }
+    
+    input[type="text"]:focus, input[type="password"]:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2);
+    }
+    
+    /* Main Layout */
+    #main { 
+      display: flex;
+      height: calc(100vh - 64px);
+      width: 100vw;
+    }
+    
+    /* Improved Sidebar */
+    #sidebar { 
+      width: 300px;
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    #folderHeader { 
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      color: var(--muted);
+      word-break: break-all;
+      background: var(--bg);
+      font-weight: 500;
+    }
+    
+    #contextIndicator { 
+      padding: 12px 16px;
+      background: var(--accent-dark);
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      color: white;
+      font-weight: 500;
+    }
+    
+    #fileSearchWrap { 
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+    }
+    
+    #fileSearch {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+    }
+    
+    #fileSearch:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2);
+    }
+    
+    #fileList { 
+      flex: 1;
+      overflow: auto;
+      list-style: none;
+      margin: 0;
+      padding: 8px 0;
+      background: var(--panel);
+    }
+    
+    .fileItem { 
+      padding: 12px 16px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s ease;
+    }
+    
+    .fileItem:hover { 
+      background: var(--hover);
+    }
+    
+    .fileItem.active { 
+      background: var(--active);
+      border-left: 4px solid var(--accent);
+    }
+    
+    .fileItem.has-context { 
+      border-right: 3px solid var(--accent);
+    }
+    
+    .fileItem .format-badge { 
+      font-size: 11px;
+      background: var(--accent);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 6px;
+      margin-left: 8px;
+      font-weight: 600;
+    }
+    
+    .pill { 
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--bg);
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-weight: 500;
+    }
 #editor { 
-  flex:1; 
-  min-width:0; 
+  flex: 1; 
+  min-width: 0; 
   overflow: auto; 
-  max-height: calc(100vh - 56px);
+  max-height: calc(100vh - 64px);
 }
 
-html, body { 
-  margin:0; 
-  padding:0; 
-  height:100vh; 
-  width:100vw; 
-  overflow: hidden;
+/* Improved Model Dropdown Styles */
+.model-dropdown { 
+  position: relative; 
 }
 
-select {
-  title: "Select options";
+.model-input-group { 
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-    .pill { font-size:11px; color:#ccc; background:#333; padding:2px 6px; border-radius:999px; }
 
-    /* Model Dropdown Styles */
-    .model-dropdown { position:relative; }
-    .model-input-group { display:flex; align-items:center; gap:4px; }
-    #modelDropdown { min-width:200px; max-width:300px; }
-    .model-actions { display:flex; gap:2px; }
-    .model-btn { padding:2px 6px; font-size:12px; }
-    .dropdown-content { 
-      position:absolute; top:100%; left:0; background:#2a2a2a; border:1px solid #444; 
-      border-radius:6px; min-width:200px; max-height:200px; overflow-y:auto; z-index:1000;
-      display:none; box-shadow:0 4px 12px rgba(0,0,0,0.3);
-    }
-    .dropdown-content.show { display:block; }
-    .dropdown-item { 
-      padding:8px 12px; cursor:pointer; border-bottom:1px solid #333; 
-      display:flex; justify-content:space-between; align-items:center;
-    }
-    .dropdown-item:hover { background:#3a3a3a; }
-    .dropdown-item:last-child { border-bottom:none; }
-    .dropdown-item .model-name { flex:1; }
-    .dropdown-item .delete-btn { 
-      color:var(--error); font-size:12px; padding:2px 4px; 
-      border-radius:3px; opacity:0.7;
-    }
-    .dropdown-item .delete-btn:hover { opacity:1; background:rgba(247,118,142,0.2); }
+#modelDropdown, #provider, #aiMode, #exportFormat { 
+  min-width: 200px;
+  max-width: 300px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
 
-    /* Format indicator */
-    .format-indicator { 
-      position:absolute; top:-8px; right:-8px; background:var(--warning); 
-      color:#000; font-size:10px; padding:2px 6px; border-radius:10px; 
-      font-weight:bold;
-    }
+#modelDropdown:focus, #provider:focus, #aiMode:focus, #exportFormat:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2);
+}
+
+.model-actions { 
+  display: flex;
+  gap: 4px;
+}
+
+.model-btn { 
+  padding: 6px 10px;
+  font-size: 12px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.model-btn:hover {
+  background: var(--accent-light);
+  transform: translateY(-1px);
+}
+
+.model-btn:active {
+  transform: translateY(0);
+}
+
+.dropdown-content { 
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-width: 250px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+  display: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  margin-top: 4px;
+}
+
+.dropdown-content.show { 
+  display: block;
+}
+
+.dropdown-item { 
+  padding: 12px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.dropdown-item:hover { 
+  background: var(--hover);
+}
+
+.dropdown-item:last-child { 
+  border-bottom: none;
+}
+
+.dropdown-item .model-name { 
+  flex: 1;
+  font-weight: 500;
+}
+
+.dropdown-item .delete-btn { 
+  color: var(--error);
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  opacity: 0.7;
+  transition: all 0.2s ease;
+}
+
+.dropdown-item .delete-btn:hover { 
+  opacity: 1;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* Format indicator */
+.format-indicator { 
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: var(--warning);
+  color: #000;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-weight: bold;
+}
+
+/* Labels styling */
+label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 4px;
+  display: block;
+}
+
+/* Toolbar section improvements */
+#toolbar section {
+  padding: 8px 0;
+  border-right: 1px solid var(--border);
+  padding-right: 16px;
+}
+
+#toolbar section:last-child {
+  border-right: none;
+}
+
+/* Loading states */
+.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.loading::after {
+  content: '';
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 1s linear infinite;
+  margin-left: 8px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error states */
+.error {
+  border-color: var(--error) !important;
+  background: rgba(239, 68, 68, 0.1) !important;
+}
+
+.error-message {
+  color: var(--error);
+  font-size: 12px;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+/* Success states */
+.success {
+  border-color: var(--success) !important;
+  background: rgba(34, 197, 94, 0.1) !important;
+}
   </style>
 </head>
 <body>
@@ -87,7 +411,7 @@ select {
       <button id="openFolderBtn">Open Folder</button>
       <button id="openBtn">Open File</button>
       <button id="saveBtn">Save</button>
-      <select id="exportFormat">
+      <select id="exportFormat" title="Select export format">
         <option value="md">Export as MD</option>
         <option value="docx">Export as DOCX</option>
         <option value="pptx">Export as PPTX</option>
@@ -116,7 +440,7 @@ select {
     <!-- AI Settings -->
     <section>
       <label>Provider:</label>
-      <select id="provider">
+      <select id="provider" title="Select AI provider">
         <option value="openrouter" selected>OpenRouter</option>
         <option value="openai">OpenAI</option>
       </select>
@@ -127,7 +451,7 @@ select {
       <div class="model-dropdown">
         <label>Model:</label>
         <div class="model-input-group">
-          <select id="modelDropdown">
+          <select id="modelDropdown" title="Select AI model">
             <option value="">Select or type model...</option>
           </select>
           <input id="modelInput" type="text" placeholder="Type model name..." style="min-width:180px;" />
@@ -139,7 +463,7 @@ select {
       </div>
 
       <label>Mode:</label>
-      <select id="aiMode">
+      <select id="aiMode" title="Select AI response mode">
         <option value="append">Append</option>
         <option value="replace">Replace</option>
       </select>

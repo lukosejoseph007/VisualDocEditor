@@ -388,7 +388,7 @@ function applyAIResponse(response) {
   }
 }
 
-import { diffEditor } from './src/renderer/diffEditor.js';
+import { reactDiffEditor } from './src/renderer/react-diff-editor.js';
 
 async function runAI(mode, extra = '') {
   const text = getSelectedOrAllText();
@@ -409,7 +409,7 @@ async function runAI(mode, extra = '') {
   
   // For improve/summarize actions, show diff editor
   if (mode === 'improve' || mode === 'summarize') {
-    diffEditor.show(text, result, () => {
+    reactDiffEditor.show(text, result, () => {
       applyAIResponse(result);
     });
   } else {
