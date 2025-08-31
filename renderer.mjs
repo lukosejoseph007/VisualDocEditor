@@ -388,6 +388,8 @@ function applyAIResponse(response) {
   }
 }
 
+import { diffEditor } from './src/renderer/diffEditor.js';
+
 async function runAI(mode, extra = '') {
   const text = getSelectedOrAllText();
   const provider = document.getElementById('provider').value;
@@ -404,7 +406,15 @@ async function runAI(mode, extra = '') {
   }
   
   const result = await window.api.aiAction({ provider, apiKey, modelId, mode, text: text + extra });
-  applyAIResponse(result);
+  
+  // For improve/summarize actions, show diff editor
+  if (mode === 'improve' || mode === 'summarize') {
+    diffEditor.show(text, result, () => {
+      applyAIResponse(result);
+    });
+  } else {
+    applyAIResponse(result);
+  }
   
   // Add model to recent list if not already there
   if (!currentSettings.models.includes(modelId)) {

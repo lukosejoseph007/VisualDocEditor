@@ -9,6 +9,7 @@
     "build": "vite build"
   },
   "dependencies": {
+    "diff": "^8.0.2",
     "dotenv": "^16.4.5",
     "mammoth": "^1.6.0",
     "monaco-editor": "^0.52.2",
