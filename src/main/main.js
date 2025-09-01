@@ -7,11 +7,13 @@ const AIService = require('./services/ai-service');
 const MultiFileAIService = require('./services/multi-file-ai-service');
 const ErrorHandler = require('./services/error-handler');
 const PerformanceService = require('./services/performance-service');
+const ClineService = require('./services/cline-service');
 
 class VisualDocEditor {
   constructor() {
     this.fileHandler = new FileHandler();
-    this.aiService = new AIService();
+    this.clineService = new ClineService();
+    this.aiService = new AIService(this.clineService);
     this.multiFileAIService = new MultiFileAIService();
     this.errorHandler = new ErrorHandler();
     this.performanceService = new PerformanceService();
@@ -39,8 +41,15 @@ class VisualDocEditor {
 
   createWindow() {
     const win = new BrowserWindow({
-      width: 1400,
-      height: 900,
+      width: 1600,
+      height: 1000,
+      frame: false, // Remove default window frame
+      titleBarStyle: 'hidden', // Hide title bar but keep window controls on macOS
+      titleBarOverlay: {
+        color: '#0f766e', // Match our accent-dark color
+        symbolColor: '#ffffff', // White symbols
+        height: 32 // Match our titlebar height
+      },
       webPreferences: { 
         preload: path.join(__dirname, '../../preload.js'),
         webSecurity: false // Allow local file access for document processing
@@ -163,7 +172,22 @@ class VisualDocEditor {
 
     // AI Actions
     ipcMain.handle('ai:action', async (event, { provider, apiKey, modelId, mode, text }) => {
-      return await this.aiService.performAction({ provider, apiKey, modelId, mode, text });
+      const result = await this.aiService.performAction({ provider, apiKey, modelId, mode, text });
+      
+      // Track performance metrics with Cline service
+      if (result.metadata) {
+        await this.clineService.trackPerformance({
+          responseTime: result.metadata.responseTime,
+          success: !result.metadata.error
+        });
+        
+        // Track token usage if available
+        if (result.metadata.tokenUsage) {
+          await this.clineService.trackTokenUsage(this.clineService.getCurrentSession()?.id, result.metadata.tokenUsage);
+        }
+      }
+      
+      return result;
     });
 
     // AI Multi-File Actions
@@ -298,6 +322,99 @@ class VisualDocEditor {
 
     ipcMain.handle('performance:trackMemory', async () => {
       return this.performanceService.trackMemoryUsage();
+    });
+
+    // Cline Service Operations
+    ipcMain.handle('cline:startSession', async (event, { sessionType }) => {
+      return this.clineService.startNewSession(sessionType);
+    });
+
+    ipcMain.handle('cline:endSession', async (event, { sessionId, status }) => {
+      this.clineService.endSession(sessionId, status);
+      return { success: true };
+    });
+
+    ipcMain.handle('cline:addThinkingStep', async (event, { sessionId, step }) => {
+      return this.clineService.addThinkingStep(sessionId, step);
+    });
+
+    ipcMain.handle('cline:trackTokenUsage', async (event, { sessionId, usage }) => {
+      this.clineService.trackTokenUsage(sessionId, usage);
+      return { success: true };
+    });
+
+    ipcMain.handle('cline:trackOperation', async (event, { sessionId, operation }) => {
+      return this.clineService.trackOperation(sessionId, operation);
+    });
+
+    ipcMain.handle('cline:completeOperation', async (event, { sessionId, operationId, result }) => {
+      this.clineService.completeOperation(sessionId, operationId, result);
+      return { success: true };
+    });
+
+    ipcMain.handle('cline:updateContextSize', async (event, { sessionId, size }) => {
+      this.clineService.updateContextSize(sessionId, size);
+      return { success: true };
+    });
+
+    ipcMain.handle('cline:trackPerformance', async (event, metrics) => {
+      this.clineService.trackPerformance(metrics);
+      return { success: true };
+    });
+
+    ipcMain.handle('cline:getSession', async (event, { sessionId }) => {
+      return this.clineService.getSession(sessionId);
+    });
+
+    ipcMain.handle('cline:getAllSessions', async () => {
+      return this.clineService.getAllSessions();
+    });
+
+    ipcMain.handle('cline:getCurrentSession', async () => {
+      return this.clineService.getCurrentSession();
+    });
+
+    ipcMain.handle('cline:getTokenUsage', async () => {
+      return this.clineService.getTokenUsage();
+    });
+
+    ipcMain.handle('cline:getPerformanceMetrics', async () => {
+      return this.clineService.getPerformanceMetrics();
+    });
+
+    ipcMain.handle('cline:clearSessions', async () => {
+      this.clineService.clearSessions();
+      return { success: true };
+    });
+
+    ipcMain.handle('cline:resetTokenUsage', async () => {
+      this.clineService.resetTokenUsage();
+      return { success: true };
+    });
+
+    // Window Controls
+    ipcMain.handle('window:minimize', async (event) => {
+      const win = BrowserWindow.getFocusedWindow();
+      if (win) win.minimize();
+      return { success: true };
+    });
+
+    ipcMain.handle('window:maximize', async (event) => {
+      const win = BrowserWindow.getFocusedWindow();
+      if (win) {
+        if (win.isMaximized()) {
+          win.unmaximize();
+        } else {
+          win.maximize();
+        }
+      }
+      return { success: true };
+    });
+
+    ipcMain.handle('window:close', async (event) => {
+      const win = BrowserWindow.getFocusedWindow();
+      if (win) win.close();
+      return { success: true };
     });
   }
 }

@@ -25,5 +25,27 @@ contextBridge.exposeInMainWorld('api', {
 
   // Context (existing from Step 6)
   buildContext: (folderPath) => ipcRenderer.invoke('context:build', { folderPath }),
-  getRelatedFiles: (filePath, query) => ipcRenderer.invoke('context:related', { filePath, query })
+  getRelatedFiles: (filePath, query) => ipcRenderer.invoke('context:related', { filePath, query }),
+
+  // Cline Service Operations
+  clineStartSession: (sessionType) => ipcRenderer.invoke('cline:startSession', { sessionType }),
+  clineEndSession: (sessionId, status) => ipcRenderer.invoke('cline:endSession', { sessionId, status }),
+  clineAddThinkingStep: (sessionId, step) => ipcRenderer.invoke('cline:addThinkingStep', { sessionId, step }),
+  clineTrackTokenUsage: (sessionId, usage) => ipcRenderer.invoke('cline:trackTokenUsage', { sessionId, usage }),
+  clineTrackOperation: (sessionId, operation) => ipcRenderer.invoke('cline:trackOperation', { sessionId, operation }),
+  clineCompleteOperation: (sessionId, operationId, result) => ipcRenderer.invoke('cline:completeOperation', { sessionId, operationId, result }),
+  clineUpdateContextSize: (sessionId, size) => ipcRenderer.invoke('cline:updateContextSize', { sessionId, size }),
+  clineTrackPerformance: (metrics) => ipcRenderer.invoke('cline:trackPerformance', metrics),
+  clineGetSession: (sessionId) => ipcRenderer.invoke('cline:getSession', { sessionId }),
+  clineGetAllSessions: () => ipcRenderer.invoke('cline:getAllSessions'),
+  clineGetCurrentSession: () => ipcRenderer.invoke('cline:getCurrentSession'),
+  clineGetTokenUsage: () => ipcRenderer.invoke('cline:getTokenUsage'),
+  clineGetPerformanceMetrics: () => ipcRenderer.invoke('cline:getPerformanceMetrics'),
+  clineClearSessions: () => ipcRenderer.invoke('cline:clearSessions'),
+  clineResetTokenUsage: () => ipcRenderer.invoke('cline:resetTokenUsage'),
+
+  // Window Controls
+  minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
+  maximizeWindow: () => ipcRenderer.invoke('window:maximize'),
+  closeWindow: () => ipcRenderer.invoke('window:close')
 });

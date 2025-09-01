@@ -35,30 +35,388 @@
       overflow: hidden;
     }
     
-    /* Improved Toolbar */
-    #toolbar { 
-      background: var(--panel); 
-      padding: 12px 16px;
+    /* Frameless Window Titlebar */
+    .titlebar {
+      -webkit-app-region: drag;
+      height: 32px;
+      background: var(--accent-dark);
       display: flex;
-      flex-wrap: wrap;
       align-items: center;
-      gap: 16px;
-      border-bottom: 1px solid var(--border);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      justify-content: space-between;
+      padding: 0 8px;
+      color: white;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .window-controls {
+      -webkit-app-region: no-drag;
+      display: flex;
+      gap: 8px;
+    }
+
+    .window-btn {
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      transition: background-color 0.2s ease;
+    }
+
+    .window-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .window-btn.close:hover {
+      background: var(--error);
+    }
+
+    /* Ribbon Container */
+    #ribbon-container {
+      position: relative;
     }
     
-    #toolbar section { 
+    /* Ribbon Tabs - VS Code Style */
+    #ribbon-tabs {
+      display: flex;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      padding: 0;
+      align-items: center;
+      min-height: 35px;
+    }
+    
+    .ribbon-tab {
+      padding: 8px 16px;
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border-bottom: 2px solid transparent;
+    }
+    
+    .ribbon-tab:hover {
+      color: var(--text);
+      background: var(--hover);
+    }
+    
+    .ribbon-tab.active {
+      color: var(--text);
+      background: var(--panel);
+      border-bottom-color: var(--accent);
+    }
+
+    /* App Title Styles */
+    .app-title {
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      background: var(--accent-dark);
+      border-radius: 4px;
+      margin-right: 8px;
       display: flex;
       align-items: center;
-      gap: 12px;
+      justify-content: center;
+      min-height: 32px;
+    }
+    
+    /* Ribbon Tab Content */
+    .ribbon-tab-content {
+      display: none;
+      min-height: 40px; /* Ensure consistent height for all tabs */
+      align-items: center; /* Vertically center content */
+    }
+    
+    .ribbon-tab-content[data-tab-content="file"] {
+      display: flex;
+    }
+    
+    /* Ribbon Toolbar - VS Code Style */
+    #toolbar { 
+      background: var(--panel); 
+      padding: 0 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      min-height: 40px;
+      transition: all 0.3s ease;
+    }
+    
+    #toolbar.collapsed {
+      min-height: 0;
+      height: 0;
+      padding: 0;
+      overflow: hidden;
+      border-bottom: none;
+    }
+    
+    .ribbon-toggle {
+      position: absolute;
+      top: -16px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 32px;
+      height: 16px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text);
+      font-size: 10px;
+      transition: all 0.3s ease;
+      z-index: 1001;
+    }
+    
+    .ribbon-toggle:hover {
+      background: var(--hover);
+      border-color: var(--accent-light);
+    }
+    
+    .ribbon-toggle::after {
+      content: '−';
+    }
+    
+    #toolbar.collapsed + .ribbon-toggle::after {
+      content: '+';
+    }
+    
+    #toolbar.collapsed + .ribbon-toggle {
+      top: 0;
+    }
+    
+    .ribbon-section { 
+      display: flex;
+      align-items: center;
+      gap: 6px;
       position: relative;
+      flex-shrink: 0;
+      padding: 4px 8px; /* Reduced vertical padding for consistent height */
+      border-right: 1px solid var(--border);
+    }
+    
+    .ribbon-section:last-child {
+      border-right: none;
+    }
+    
+    .ribbon-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 0; /* Added vertical padding for consistent spacing */
+    }
+    
+    /* Ultra-Compact Ribbon Buttons */
+    .ribbon-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 4px 6px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text);
+      font-size: 10px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-width: 48px;
+      min-height: 32px;
+    }
+    
+    .ribbon-btn:hover {
+      background: var(--hover);
+      border-color: var(--accent-light);
+    }
+    
+    .ribbon-btn:active {
+      transform: translateY(1px);
+    }
+    
+    /* Remove all colored backgrounds from ribbon buttons */
+    .ribbon-btn.primary,
+    .ribbon-btn.accent,
+    .ribbon-btn.ai-btn,
+    .ribbon-btn.context-mode {
+      background: transparent;
+      border-color: transparent;
+      color: var(--text);
+    }
+    
+    .ribbon-btn.primary:hover,
+    .ribbon-btn.accent:hover,
+    .ribbon-btn.ai-btn:hover,
+    .ribbon-btn.context-mode:hover {
+      background: var(--hover);
+      border-color: var(--accent-light);
+    }
+    
+    .ribbon-icon {
+      font-size: 12px;
+      margin-bottom: 1px;
+    }
+    
+    .ribbon-label {
+      font-size: 9px;
+      font-weight: 500;
+      line-height: 1.1;
+    }
+    
+    /* Ultra-Compact Ribbon Inputs */
+    .ribbon-input {
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 11px;
+      transition: all 0.2s ease;
+      min-width: 100px;
+      height: 32px; /* Increased height by 50% */
+    }
+    
+    .ribbon-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2);
+    }
+    
+    .ribbon-input.password {
+      position: relative;
+    }
+    
+    /* Ultra-Compact Ribbon Dropdowns */
+    .ribbon-dropdown {
+      padding: 8px 12px;
+      padding-right: 28px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      appearance: none;
+      min-width: 90px;
+      height: 32px; /* Increased height by 50% */
+      line-height: 1.2; /* Ensure text is properly centered */
+    }
+    
+    .ribbon-dropdown:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2);
+    }
+    
+    /* Ultra-Compact Ribbon Action Buttons */
+    .ribbon-action-btn {
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 32px; /* Increased height by 50% */
+      width: 32px; /* Increased width to maintain proportion */
+    }
+    
+    .ribbon-action-btn:hover {
+      background: var(--hover);
+      border-color: var(--accent-light);
+    }
+    
+    .ribbon-icon-btn {
+      padding: 6px 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 32px; /* Increased height by 50% */
+      width: 32px; /* Increased width to maintain proportion */
+      font-size: 12px; /* Slightly larger font size */
+    }
+    
+    .ribbon-icon-btn:hover {
+      background: var(--hover);
+      border-color: var(--accent-light);
+    }
+    
+    /* Input wrapper for ribbon */
+    .input-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+    
+    .model-input-group {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+    
+    .model-input {
+      min-width: 90px;
+      max-width: 110px;
+    }
+    
+    .model-actions {
+      display: flex;
+      gap: 1px;
+    }
+    
+    /* Stacked layout for better space utilization */
+    .ribbon-section.compact {
+      flex-direction: column;
+      gap: 2px;
+    }
+    
+    .ribbon-group.compact {
+      flex-direction: column;
+      gap: 2px;
+    }
+    
+    .ribbon-btn.compact {
+      min-width: 40px;
+      min-height: 28px;
+      padding: 2px 4px;
+    }
+    
+    .ribbon-btn.icon-only {
+      min-width: 24px;
+      min-height: 24px;
+      padding: 2px;
+    }
+    
+    .ribbon-btn.icon-only .ribbon-icon {
+      margin-bottom: 0;
+    }
+    
+    .ribbon-btn.icon-only .ribbon-label {
+      display: none;
     }
     
     /* Improved Buttons and Inputs */
     button, select, input { 
       padding: 8px 16px;
       font-size: 14px;
-      border-radius: 8px;
       border: 1px solid var(--border);
       background: var(--panel);
       color: var(--text);
@@ -104,7 +462,7 @@
     /* Main Layout */
     #main { 
       display: flex;
-      height: calc(100vh - 64px);
+      height: calc(100vh - 40px);
       width: 100vw;
     }
     
@@ -215,7 +573,7 @@
   flex: 1; 
   min-width: 0; 
   overflow: auto; 
-  max-height: calc(100vh - 64px);
+  max-height: calc(100vh - 40px);
 }
 
 /* Improved Model Dropdown Styles */
@@ -272,21 +630,19 @@
   transform: translateY(0);
 }
 
-.dropdown-content { 
-  position: absolute;
-  top: 100%;
-  left: 0;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  min-width: 250px;
-  max-height: 300px;
-  overflow-y: auto;
-  z-index: 1000;
-  display: none;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-  margin-top: 4px;
-}
+    .dropdown-content { 
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      min-width: 250px;
+      max-height: 300px;
+      overflow-y: auto;
+      z-index: 1000;
+      display: none;
+      margin-top: 4px;
+    }
 
 .dropdown-content.show { 
   display: block;
@@ -315,14 +671,13 @@
   font-weight: 500;
 }
 
-.dropdown-item .delete-btn { 
-  color: var(--error);
-  font-size: 12px;
-  padding: 4px 8px;
-  border-radius: 4px;
-  opacity: 0.7;
-  transition: all 0.2s ease;
-}
+    .dropdown-item .delete-btn { 
+      color: var(--error);
+      font-size: 12px;
+      padding: 4px 8px;
+      opacity: 0.7;
+      transition: all 0.2s ease;
+    }
 
 .dropdown-item .delete-btn:hover { 
   opacity: 1;
@@ -338,7 +693,6 @@
   color: #000;
   font-size: 10px;
   padding: 3px 8px;
-  border-radius: 10px;
   font-weight: bold;
 }
 
@@ -351,16 +705,302 @@ label {
   display: block;
 }
 
-/* Toolbar section improvements */
-#toolbar section {
-  padding: 8px 0;
-  border-right: 1px solid var(--border);
-  padding-right: 16px;
-}
+    /* Modern Toolbar Styles */
+    .toolbar-section {
+      padding: 12px 16px;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-width: 0;
+    }
 
-#toolbar section:last-child {
-  border-right: none;
-}
+    .toolbar-section:last-child {
+      border-right: none;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .section-icon {
+      font-size: 16px;
+    }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .button-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .dropdown-group {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .settings-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .setting-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      min-width: 80px;
+      text-align: right;
+    }
+
+    /* Modern Buttons */
+    .toolbar-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .toolbar-btn:hover {
+      background: var(--hover);
+      border-color: var(--accent-light);
+      transform: translateY(-1px);
+    }
+
+    .toolbar-btn:active {
+      transform: translateY(0);
+    }
+
+    .toolbar-btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .toolbar-btn.primary:hover {
+      background: var(--accent-light);
+      border-color: var(--accent-light);
+    }
+
+    .toolbar-btn.accent {
+      background: var(--accent-dark);
+      border-color: var(--accent-dark);
+      color: white;
+    }
+
+    .toolbar-btn.accent:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .toolbar-btn.ai-btn {
+      background: linear-gradient(135deg, var(--accent-dark), var(--accent));
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .toolbar-btn.ai-btn:hover {
+      background: linear-gradient(135deg, var(--accent), var(--accent-light));
+      border-color: var(--accent-light);
+    }
+
+    .toolbar-btn.context-mode {
+      background: linear-gradient(135deg, #7e22ce, #9333ea);
+      border-color: #7e22ce;
+      color: white;
+    }
+
+    .toolbar-btn.context-mode:hover {
+      background: linear-gradient(135deg, #9333ea, #a855f7);
+      border-color: #9333ea;
+    }
+
+    .btn-icon {
+      font-size: 14px;
+    }
+
+    .btn-text {
+      font-weight: 500;
+    }
+
+    /* Modern Inputs */
+    .modern-input {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 12px;
+      transition: all 0.2s ease;
+      flex: 1;
+    }
+
+    .modern-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2);
+    }
+
+    .modern-input.password {
+      position: relative;
+    }
+
+    .input-hint {
+      position: absolute;
+      top: 50%;
+      left: 12px;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 12px;
+      pointer-events: none;
+      opacity: 0.7;
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .input-action-btn {
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: white;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .input-action-btn:hover {
+      background: var(--accent-light);
+      border-color: var(--accent-light);
+      transform: scale(1.05);
+    }
+
+    /* Modern Dropdowns */
+    .dropdown-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .modern-dropdown {
+      padding: 8px 12px;
+      padding-right: 32px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      appearance: none;
+      min-width: 180px;
+    }
+
+    .modern-dropdown:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2);
+    }
+
+    .dropdown-arrow {
+      position: absolute;
+      right: 8px;
+      pointer-events: none;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    /* Icon Buttons */
+    .icon-btn {
+      padding: 6px 8px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .icon-btn:hover {
+      background: var(--hover);
+      border-color: var(--accent-light);
+    }
+
+    .model-input-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .model-input {
+      min-width: 150px;
+      max-width: 200px;
+    }
+
+    .model-actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    /* Toolbar section improvements */
+    #toolbar section {
+      padding: 8px 0;
+      border-right: 1px solid var(--border);
+      padding-right: 16px;
+    }
+
+    #toolbar section:last-child {
+      border-right: none;
+    }
 
 /* Loading states */
 .loading {
@@ -405,69 +1045,161 @@ label {
   </style>
 </head>
 <body>
-  <div id="toolbar">
-    <!-- File Operations -->
-    <section>
-      <button id="openFolderBtn">Open Folder</button>
-      <button id="openBtn">Open File</button>
-      <button id="saveBtn">Save</button>
-      <select id="exportFormat" title="Select export format">
-        <option value="md">Export as MD</option>
-        <option value="docx">Export as DOCX</option>
-        <option value="pptx">Export as PPTX</option>
-        <option value="html">Export as HTML</option>
-        <option value="txt">Export as TXT</option>
-      </select>
-      <button id="exportBtn">Export</button>
-    </section>
+  <!-- Titlebar for frameless window -->
+  <div class="titlebar">
+    <div class="title">VisualDocEditor</div>
+    <div class="window-controls">
+      <button class="window-btn minimize">−</button>
+      <button class="window-btn maximize">□</button>
+      <button class="window-btn close">×</button>
+    </div>
+  </div>
 
-    <!-- Single File AI -->
-    <section>
-      <button id="aiImprove">Improve</button>
-      <button id="aiSummarize">Summarize</button>
-      <input id="aiQuestion" type="text" placeholder="Ask a question..." />
-      <button id="aiAsk">Ask</button>
-    </section>
+  <div id="ribbon-container">
+    <!-- Ribbon Tabs -->
+    <div id="ribbon-tabs">
+      <button class="ribbon-tab active" data-tab="file">File</button>
+      <button class="ribbon-tab" data-tab="ai">AI Tools</button>
+      <button class="ribbon-tab" data-tab="settings">AI Settings</button>
+    </div>
 
-    <!-- Multi-File AI -->
-    <section>
-      <button id="aiExplain" class="context-mode">Explain</button>
-      <button id="aiConnect" class="context-mode">Connect</button>
-      <button id="aiFind" class="context-mode">Find Similar</button>
-      <button id="aiOverview" class="context-mode">Overview</button>
-    </section>
-
-    <!-- AI Settings -->
-    <section>
-      <label>Provider:</label>
-      <select id="provider" title="Select AI provider">
-        <option value="openrouter" selected>OpenRouter</option>
-        <option value="openai">OpenAI</option>
-      </select>
-
-      <label>API Key:</label>
-      <input id="apiKey" type="password" placeholder="Enter API Key" />
-
-      <div class="model-dropdown">
-        <label>Model:</label>
-        <div class="model-input-group">
-          <select id="modelDropdown" title="Select AI model">
-            <option value="">Select or type model...</option>
-          </select>
-          <input id="modelInput" type="text" placeholder="Type model name..." style="min-width:180px;" />
-          <div class="model-actions">
-            <button id="addModelBtn" class="model-btn" title="Add current model to list">+</button>
-            <button id="clearModelsBtn" class="model-btn" title="Clear models list">Clear</button>
+    <!-- Ribbon Content -->
+    <div id="toolbar">
+      <!-- File Tab Content -->
+      <div class="ribbon-tab-content" data-tab-content="file">
+        <section class="ribbon-section">
+          <div class="ribbon-group">
+            <button id="openFolderBtn" class="ribbon-btn" title="Open Folder">
+              <span class="ribbon-icon">📂</span>
+              <span class="ribbon-label">Open Folder</span>
+            </button>
+            <button id="openBtn" class="ribbon-btn" title="Open File">
+              <span class="ribbon-icon">📄</span>
+              <span class="ribbon-label">Open File</span>
+            </button>
+            <button id="saveBtn" class="ribbon-btn primary" title="Save">
+              <span class="ribbon-icon">💾</span>
+              <span class="ribbon-label">Save</span>
+            </button>
           </div>
-        </div>
+          
+          <div class="ribbon-group">
+            <div class="dropdown-wrapper">
+              <select id="exportFormat" class="ribbon-dropdown" title="Select export format">
+                <option value="md">Export as MD</option>
+                <option value="docx">Export as DOCX</option>
+                <option value="pptx">Export as PPTX</option>
+                <option value="html">Export as HTML</option>
+                <option value="txt">Export as TXT</option>
+              </select>
+              <span class="dropdown-arrow">▼</span>
+            </div>
+            <button id="exportBtn" class="ribbon-btn accent" title="Export">
+              <span class="ribbon-icon">📤</span>
+              <span class="ribbon-label">Export</span>
+            </button>
+          </div>
+        </section>
       </div>
 
-      <label>Mode:</label>
-      <select id="aiMode" title="Select AI response mode">
-        <option value="append">Append</option>
-        <option value="replace">Replace</option>
-      </select>
-    </section>
+      <!-- AI Tools Tab Content -->
+      <div class="ribbon-tab-content" data-tab-content="ai" style="display: none;">
+        <!-- Single File AI -->
+        <section class="ribbon-section">
+          <div class="ribbon-group">
+            <button id="aiImprove" class="ribbon-btn ai-btn" title="Improve content">
+              <span class="ribbon-icon">🔄</span>
+              <span class="ribbon-label">Improve</span>
+            </button>
+            <button id="aiSummarize" class="ribbon-btn ai-btn" title="Summarize content">
+              <span class="ribbon-icon">📋</span>
+              <span class="ribbon-label">Summarize</span>
+            </button>
+          </div>
+          
+          <div class="ribbon-group">
+            <div class="input-wrapper">
+              <input id="aiQuestion" type="text" placeholder="Ask AI..." class="ribbon-input" />
+              <button id="aiAsk" class="ribbon-action-btn" title="Ask AI">
+                <span class="ribbon-icon">⚡</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Multi-File AI -->
+        <section class="ribbon-section">
+          <div class="ribbon-group">
+            <button id="aiExplain" class="ribbon-btn context-mode" title="Explain across files">
+              <span class="ribbon-icon">📖</span>
+              <span class="ribbon-label">Explain</span>
+            </button>
+            <button id="aiConnect" class="ribbon-btn context-mode" title="Connect ideas across files">
+              <span class="ribbon-icon">🔗</span>
+              <span class="ribbon-label">Connect</span>
+            </button>
+            <button id="aiFind" class="ribbon-btn context-mode" title="Find similar content">
+              <span class="ribbon-icon">🔍</span>
+              <span class="ribbon-label">Find</span>
+            </button>
+            <button id="aiOverview" class="ribbon-btn context-mode" title="Get overview">
+              <span class="ribbon-icon">📊</span>
+              <span class="ribbon-label">Overview</span>
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <!-- AI Settings Tab Content -->
+      <div class="ribbon-tab-content" data-tab-content="settings" style="display: none;">
+        <section class="ribbon-section">
+          <div class="ribbon-group">
+            <div class="dropdown-wrapper">
+              <select id="provider" class="ribbon-dropdown" title="Select AI provider">
+                <option value="openrouter" selected>OpenRouter</option>
+                <option value="openai">OpenAI</option>
+              </select>
+              <span class="dropdown-arrow">▼</span>
+            </div>
+          </div>
+          
+          <div class="ribbon-group">
+            <div class="input-wrapper">
+              <input id="apiKey" type="password" placeholder="API Key" class="ribbon-input password" />
+              <span class="input-hint">•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••</span>
+            </div>
+          </div>
+          
+          <div class="ribbon-group">
+            <div class="model-input-group">
+              <div class="dropdown-wrapper">
+                <select id="modelDropdown" class="ribbon-dropdown" title="Select AI model">
+                  <option value="">Select model...</option>
+                </select>
+                <span class="dropdown-arrow">▼</span>
+              </div>
+              <input id="modelInput" type="text" placeholder="Model name..." class="ribbon-input model-input" />
+              <div class="model-actions">
+                <button id="addModelBtn" class="ribbon-icon-btn" title="Add model">+</button>
+                <button id="clearModelsBtn" class="ribbon-icon-btn" title="Clear models">×</button>
+              </div>
+            </div>
+          </div>
+          
+          <div class="ribbon-group">
+            <div class="dropdown-wrapper">
+              <select id="aiMode" class="ribbon-dropdown" title="Select AI response mode">
+                <option value="append">Append</option>
+                <option value="replace">Replace</option>
+              </select>
+              <span class="dropdown-arrow">▼</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+    
+    <div class="ribbon-toggle" id="ribbonToggle"></div>
   </div>
 
   <div id="main">
@@ -482,6 +1214,456 @@ label {
     <div id="editor"></div>
   </div>
 
-  <script type="module" src="./renderer.mjs"></script>
-</body>
+    <script type="module" src="./renderer.mjs"></script>
+    
+    <!-- Cline Panel -->
+    <div id="clinePanel" class="cline-panel">
+      <div class="panel-header">
+        <h2>AI Usage Stats</h2>
+        <button id="clineToggle" class="toggle-btn">−</button>
+      </div>
+    
+      <div class="panel-content">
+        <!-- Session Info -->
+        <div class="session-info">
+          <h4>Current Session</h4>
+          <div id="sessionStatus" class="status-indicator">No active session</div>
+          <div class="session-stats">
+            <span id="sessionDuration">00:00</span>
+            <span id="sessionOperations">0 ops</span>
+          </div>
+        </div>
+
+        <!-- Token Usage -->
+        <div class="token-usage">
+          <h4>Token Usage</h4>
+          <div class="token-stats">
+            <div class="token-stat">
+              <span class="label">Total:</span>
+              <span id="totalTokens" class="value">0</span>
+            </div>
+            <div class="token-stat">
+              <span class="label">Prompt:</span>
+              <span id="promptTokens" class="value">0</span>
+            </div>
+            <div class="token-stat">
+              <span class="label">Completion:</span>
+              <span id="completionTokens" class="value">0</span>
+            </div>
+            <div class="token-stat">
+              <span class="label">Estimated Cost:</span>
+              <span id="estimatedCost" class="value">$0.00</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Thinking Process -->
+        <div class="thinking-process">
+          <h4>Thinking Process</h4>
+          <div id="thinkingSteps" class="thinking-steps">
+            <div class="empty-state">No thinking steps recorded</div>
+          </div>
+        </div>
+
+        <!-- Performance Metrics -->
+        <div class="performance-metrics">
+          <h4>Performance</h4>
+          <div class="metrics-grid">
+            <div class="metric">
+              <span class="label">Avg Response:</span>
+              <span id="avgResponseTime" class="value">0ms</span>
+            </div>
+            <div class="metric">
+              <span class="label">Success Rate:</span>
+              <span id="successRate" class="value">100%</span>
+            </div>
+            <div class="metric">
+              <span class="label">Total Ops:</span>
+              <span id="totalOperations" class="value">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Context Usage -->
+        <div class="context-usage">
+          <h4>Context Usage</h4>
+          <div class="context-meter">
+            <div class="meter-bar">
+              <div id="contextBar" class="meter-fill" style="width: 0%"></div>
+            </div>
+            <span id="contextSize" class="context-size-value">0 tokens</span>
+          </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="cline-controls">
+          <button id="startSessionBtn" class="btn-primary">Start Session</button>
+          <button id="endSessionBtn" class="btn-secondary" disabled>End Session</button>
+          <button id="clearSessionsBtn" class="btn-warning">Clear All</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cline Panel Styles -->
+    <style>
+      .cline-panel {
+        position: fixed;
+        right: 0;
+        bottom: 0;
+        width: 300px;
+        height: 400px;
+        background: var(--panel);
+        border-top: 1px solid var(--border);
+        border-left: 1px solid var(--border);
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        box-shadow: -2px -2px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 14px;
+        background: var(--accent-dark);
+        color: white;
+        font-weight: 600;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+      }
+      
+      .panel-header h2 {
+        font-size: 13px;
+        font-weight: 600;
+        margin: 0;
+        color: white;
+      }
+
+      .panel-toggle {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 16px;
+        cursor: pointer;
+        padding: 4px 8px;
+      }
+
+      .panel-toggle:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .panel-content {
+        flex: 1;
+        padding: 12px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .session-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 8px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        font-size: 11px;
+      }
+
+      .session-info .label {
+        font-size: 11px;
+        color: var(--muted);
+        margin-right: 4px;
+      }
+
+      .status-indicator {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 6px;
+      }
+
+      .status-indicator.active {
+        background: var(--success);
+        color: white;
+      }
+
+      .status-indicator.inactive {
+        background: var(--muted);
+        color: var(--text);
+      }
+
+      .token-usage h4,
+      .thinking-process h4,
+      .performance-metrics h4,
+      .context-usage h4 {
+        font-size: 11px;
+        margin: 0 0 6px 0;
+        color: var(--muted);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .token-stats {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .token-stat {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 6px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        font-size: 11px;
+      }
+
+      .token-stat .label {
+        color: var(--muted);
+        font-weight: 500;
+      }
+
+      .token-stat .value {
+        font-weight: 600;
+        color: var(--text);
+      }
+
+      .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+
+      .metric {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 6px;
+        background: var(--bg);
+        border: 1px solid var(--border);
+      }
+
+      .metric .label {
+        font-size: 11px;
+        color: var(--muted);
+        margin-bottom: 4px;
+      }
+
+      .metric .value {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text);
+      }
+
+      .thinking-steps {
+        max-height: 80px;
+        overflow-y: auto;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        padding: 6px;
+        font-size: 10px;
+      }
+
+      .thinking-step {
+        padding: 4px 6px;
+        margin-bottom: 3px;
+        background: rgba(255, 255, 255, 0.05);
+        font-size: 10px;
+        line-height: 1.3;
+      }
+
+      .thinking-step .step-type {
+        font-weight: 600;
+        color: var(--accent);
+        margin-bottom: 2px;
+      }
+
+      .thinking-step .step-content {
+        color: var(--text);
+        margin-bottom: 2px;
+      }
+
+      .thinking-step .step-tokens {
+        font-size: 10px;
+        color: var(--muted);
+      }
+
+      .empty-state {
+        text-align: center;
+        color: var(--muted);
+        font-size: 12px;
+        padding: 16px;
+      }
+
+      .context-meter {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .meter-bar {
+        flex: 1;
+        height: 8px;
+        background: var(--bg);
+        overflow: hidden;
+      }
+
+      .meter-fill {
+        height: 100%;
+        background: var(--accent);
+        transition: width 0.3s ease;
+      }
+
+      .context-size-value {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--text);
+        min-width: 80px;
+        text-align: right;
+      }
+
+      .cline-controls {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+      }
+
+      .btn-primary, .btn-secondary, .btn-warning {
+        padding: 8px 12px;
+        border: none;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .btn-primary {
+        background: var(--accent);
+        color: white;
+      }
+
+      .btn-primary:hover:not(:disabled) {
+        background: var(--accent-light);
+      }
+
+      .btn-secondary {
+        background: var(--panel);
+        color: var(--text);
+        border: 1px solid var(--border);
+      }
+
+      .btn-secondary:hover:not(:disabled) {
+        background: var(--hover);
+      }
+
+      .btn-warning {
+        background: var(--error);
+        color: white;
+      }
+
+      .btn-warning:hover:not(:disabled) {
+        background: #dc2626;
+      }
+
+      .btn-primary:disabled, .btn-secondary:disabled, .btn-warning:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+    </style>
+
+    <!-- Cline Panel Script -->
+    <script type="module">
+      // Initialize Cline panel
+      document.addEventListener('DOMContentLoaded', async () => {
+        try {
+          // Load Cline panel module
+          const ClinePanel = await import('./src/renderer/components/ClinePanel.js');
+          window.clinePanel = new ClinePanel.default();
+        } catch (error) {
+          console.error('Failed to load Cline panel:', error);
+        }
+      });
+    </script>
+
+    <!-- Ribbon Toggle Script -->
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const toolbar = document.getElementById('toolbar');
+        const ribbonToggle = document.getElementById('ribbonToggle');
+        
+        if (toolbar && ribbonToggle) {
+          ribbonToggle.addEventListener('click', () => {
+            toolbar.classList.toggle('collapsed');
+            
+            // Update main layout height
+            const main = document.getElementById('main');
+            if (main) {
+              if (toolbar.classList.contains('collapsed')) {
+                main.style.height = '100vh';
+              } else {
+                main.style.height = 'calc(100vh - 40px)';
+              }
+            }
+          });
+        }
+
+        // Tab switching functionality
+        const tabs = document.querySelectorAll('.ribbon-tab');
+        const tabContents = document.querySelectorAll('.ribbon-tab-content');
+        
+        tabs.forEach(tab => {
+          tab.addEventListener('click', () => {
+            const tabName = tab.getAttribute('data-tab');
+            
+            // Update active tab
+            tabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            
+            // Show corresponding content
+            tabContents.forEach(content => {
+              content.style.display = 'none';
+            });
+            
+            const activeContent = document.querySelector(`[data-tab-content="${tabName}"]`);
+            if (activeContent) {
+              activeContent.style.display = 'flex';
+            }
+          });
+        });
+
+        // Window control functionality
+        const minimizeBtn = document.querySelector('.window-btn.minimize');
+        const maximizeBtn = document.querySelector('.window-btn.maximize');
+        const closeBtn = document.querySelector('.window-btn.close');
+
+        if (minimizeBtn) {
+          minimizeBtn.addEventListener('click', () => {
+            if (window.api && window.api.minimizeWindow) {
+              window.api.minimizeWindow();
+            }
+          });
+        }
+
+        if (maximizeBtn) {
+          maximizeBtn.addEventListener('click', () => {
+            if (window.api && window.api.maximizeWindow) {
+              window.api.maximizeWindow();
+            }
+          });
+        }
+
+        if (closeBtn) {
+          closeBtn.addEventListener('click', () => {
+            if (window.api && window.api.closeWindow) {
+              window.api.closeWindow();
+            }
+          });
+        }
+      });
+    </script>
+  </body>
 </html>

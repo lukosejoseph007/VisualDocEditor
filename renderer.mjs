@@ -1,4 +1,5 @@
 import * as monaco from 'monaco-editor';
+import { tealTheme } from './src/renderer/monaco-theme.js';
 
 // Browser-compatible path utilities
 function basename(filePath) {
@@ -38,10 +39,13 @@ let lastLoadedContent = '';
 let files = [];
 let contextReady = false;
 
+// Define custom theme
+monaco.editor.defineTheme('teal-theme', tealTheme);
+
 const editor = monaco.editor.create(editorContainer, {
   value: '# Hello VisualDocEditor\n\nNow with multi-format support and persistent model selection!\n\nSupported formats:\n- Markdown (.md)\n- Text files (.txt)\n- Word documents (.docx)\n- PDF files (.pdf)',
   language: 'markdown',
-  theme: 'vs-dark',
+  theme: 'teal-theme',
   automaticLayout: true,
   minimap: { enabled: false },
   fontSize: 16
@@ -421,7 +425,7 @@ function applyAIResponse(response) {
   }
 }
 
-import { reactDiffEditor } from './src/renderer/react-diff-editor.js';
+import { diffEditor } from './src/renderer/diffEditor.js';
 
 async function runAI(mode, extra = '') {
   const text = getSelectedOrAllText();
@@ -438,21 +442,60 @@ async function runAI(mode, extra = '') {
     return;
   }
   
+  // Track AI operation with Cline panel
+  let operationId = null;
+  try {
+    if (window.clinePanel) {
+      operationId = await window.clinePanel.onAIRequestStart({ mode });
+    }
+  } catch (error) {
+    console.error('Failed to track AI operation:', error);
+  }
+  
   const result = await window.api.aiAction({ provider, apiKey, modelId, mode, text: text + extra });
+  
+  // Handle enhanced response format with metadata
+  const aiContent = result.content || result;
+  const metadata = result.metadata || {};
   
   // For improve/summarize actions, show diff editor
   if (mode === 'improve' || mode === 'summarize') {
-    reactDiffEditor.show(text, result, () => {
-      applyAIResponse(result);
+    diffEditor.show(text, aiContent, () => {
+      applyAIResponse(aiContent);
     });
   } else {
-    applyAIResponse(result);
+    applyAIResponse(aiContent);
   }
   
   // Add model to recent list if not already there
   if (!currentSettings.models.includes(modelId)) {
     currentSettings = await window.api.addModel(modelId);
     updateModelDropdown();
+  }
+  
+  // Track completion with Cline panel and display thinking process
+  if (window.clinePanel && operationId) {
+    try {
+      await window.clinePanel.onAIRequestComplete(operationId, aiContent, metadata.tokenUsage);
+      
+      // Display thinking process if available
+      if (metadata.thinkingProcess && metadata.thinkingProcess.length > 0) {
+        console.log('Thinking process available:', metadata.thinkingProcess);
+        await window.clinePanel.addThinkingProcess(metadata.thinkingProcess);
+      } else {
+        console.log('No thinking process in metadata:', metadata);
+      }
+    } catch (error) {
+      console.error('Failed to complete AI operation tracking:', error);
+    }
+  }
+  
+  // Log performance metrics to console
+  if (metadata.responseTime) {
+    console.log(`AI request completed in ${metadata.responseTime}ms`);
+  }
+  if (metadata.tokenUsage) {
+    console.log(`Token usage: ${metadata.tokenUsage.total} tokens (prompt: ${metadata.tokenUsage.prompt}, completion: ${metadata.tokenUsage.completion})`);
   }
 }
 
@@ -476,6 +519,16 @@ async function runMultiFileAI(mode, query = '') {
     return;
   }
   
+  // Track AI operation with Cline panel
+  let operationId = null;
+  try {
+    if (window.clinePanel) {
+      operationId = await window.clinePanel.onAIRequestStart({ mode: `multi_${mode}` });
+    }
+  } catch (error) {
+    console.error('Failed to track AI operation:', error);
+  }
+  
   // Get related files for context
   const relatedResult = await window.api.getRelatedFiles(currentFilePath, query || currentContent.substring(0, 500));
   
@@ -495,6 +548,15 @@ async function runMultiFileAI(mode, query = '') {
   if (!currentSettings.models.includes(modelId)) {
     currentSettings = await window.api.addModel(modelId);
     updateModelDropdown();
+  }
+  
+  // Track completion with Cline panel
+  if (window.clinePanel && operationId) {
+    try {
+      await window.clinePanel.onAIRequestComplete(operationId, result, {});
+    } catch (error) {
+      console.error('Failed to complete AI operation tracking:', error);
+    }
   }
 }
 

@@ -10,7 +10,7 @@ function injectStyles() {
       left: 0;
       width: 100%;
       height: 100%;
-      background-color: rgba(0,0,0,0.9);
+      background-color: rgba(15, 23, 42, 0.95);
       display: flex;
       justify-content: center;
       align-items: center;
@@ -18,111 +18,118 @@ function injectStyles() {
     }
     
     #diff-editor-container .editor-content {
-      background-color: #1e1e1e;
-      color: #d4d4d4;
-      border-radius: 8px;
+      background-color: var(--panel);
+      color: var(--text);
+      border-radius: 12px;
       width: 95%;
       height: 95%;
       display: flex;
       flex-direction: column;
       overflow-y: auto;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      border: 1px solid var(--border);
     }
     
     #diff-editor-container .header {
-      padding: 16px;
-      border-bottom: 1px solid #3c3c3c;
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background-color: #252526;
+      background-color: var(--accent-dark);
     }
     
     #diff-editor-container .header h2 {
-      color: #e0e0e0;
+      color: white;
       margin: 0;
       font-size: 1.5rem;
+      font-weight: 600;
     }
     
     #diff-editor-container .header p {
-      color: #a0a0a0;
+      color: rgba(255, 255, 255, 0.8);
       margin: 0;
+      font-size: 14px;
     }
     
     #diff-editor-container .diff-container {
       display: flex;
       flex: 1;
-      background-color: #1e1e1e;
+      background-color: var(--panel);
     }
     
     #diff-editor-container .diff-side {
       flex: 1;
-      padding: 16px;
+      padding: 20px;
       overflow: auto;
       font-family: 'Fira Code', 'Consolas', monospace;
       font-size: 14px;
       line-height: 1.6;
       white-space: pre;
-      color: #d4d4d4;
-      background-color: #1e1e1e;
+      color: var(--text);
+      background-color: var(--panel);
     }
     
     #diff-editor-container .original-side {
-      border-right: 1px solid #3c3c3c;
-      background-color: #1e1e1e;
+      border-right: 1px solid var(--border);
+      background-color: var(--panel);
     }
     
     .line-removed {
-      background-color: rgba(255, 0, 0, 0.15) !important;
+      background-color: rgba(239, 68, 68, 0.15) !important;
       text-decoration: line-through;
-      color: #ff9e9e !important;
-      padding: 2px 4px;
+      color: #fca5a5 !important;
+      padding: 2px 8px;
       margin: 2px 0;
+      border-radius: 3px;
+      border-left: 3px solid var(--error);
     }
     
     .line-added {
-      background-color: rgba(0, 200, 0, 0.15) !important;
-      color: #a0ffa0 !important;
-      padding: 2px 4px;
+      background-color: rgba(34, 197, 94, 0.15) !important;
+      color: #86efac !important;
+      padding: 2px 8px;
       margin: 2px 0;
+      border-radius: 3px;
+      border-left: 3px solid var(--success);
     }
     
     #diff-editor-container .footer {
-      padding: 16px;
-      border-top: 1px solid #3c3c3c;
+      padding: 20px;
+      border-top: 1px solid var(--border);
       display: flex;
       justify-content: flex-end;
       gap: 12px;
-      background-color: #252526;
+      background-color: var(--panel);
     }
     
     #diff-editor-container button {
-      padding: 10px 20px;
-      border-radius: 4px;
+      padding: 12px 24px;
+      border-radius: 8px;
       cursor: pointer;
-      font-weight: 500;
+      font-weight: 600;
       transition: all 0.2s;
       font-size: 1rem;
-    }
-    
-    #diff-editor-container .reject-btn {
-      background-color: #3a3a3a;
-      border: 1px solid #5a5a5a;
-      color: #d4d4d4;
-    }
-    
-    #diff-editor-container .reject-btn:hover {
-      background-color: #4a4a4a;
-    }
-    
-    #diff-editor-container .accept-btn {
-      background-color: #0078d4;
-      color: white;
       border: none;
     }
     
+    #diff-editor-container .reject-btn {
+      background-color: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    
+    #diff-editor-container .reject-btn:hover {
+      background-color: var(--hover);
+    }
+    
+    #diff-editor-container .accept-btn {
+      background-color: var(--accent);
+      color: white;
+    }
+    
     #diff-editor-container .accept-btn:hover {
-      background-color: #0066b9;
+      background-color: var(--accent-light);
     }
   `;
   document.head.appendChild(style);
@@ -145,18 +152,6 @@ class DiffEditor {
     if (!this.container) {
       this.container = document.createElement('div');
       this.container.id = 'diff-editor-container';
-      this.container.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0,0,0,0.7);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-      `;
       document.body.appendChild(this.container);
     } else {
       this.container.style.display = 'flex';
