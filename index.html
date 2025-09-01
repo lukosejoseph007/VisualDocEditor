@@ -293,9 +293,11 @@
       box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2);
     }
     
-    .ribbon-input.password {
-      position: relative;
-    }
+.ribbon-input.password {
+  position: relative;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
     
     /* Ultra-Compact Ribbon Dropdowns */
     .ribbon-dropdown {
@@ -883,16 +885,20 @@ label {
       position: relative;
     }
 
-    .input-hint {
-      position: absolute;
-      top: 50%;
-      left: 12px;
-      transform: translateY(-50%);
-      color: var(--muted);
-      font-size: 12px;
-      pointer-events: none;
-      opacity: 0.7;
-    }
+.input-hint {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 12px;
+  pointer-events: none;
+  opacity: 0.7;
+  max-width: calc(100% - 24px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
     .input-wrapper {
       position: relative;

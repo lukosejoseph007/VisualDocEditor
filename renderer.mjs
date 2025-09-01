@@ -395,7 +395,28 @@ document.getElementById('saveBtn').addEventListener('click', async () => {
 document.getElementById('exportBtn').addEventListener('click', async () => {
   const content = editor.getValue();
   const format = document.getElementById('exportFormat').value;
-  const result = await window.api.exportFile(currentFilePath, content, format);
+  
+  // Prepare AI result object and original data for Office document preservation
+  const aiResult = { content };
+  let originalData = null;
+  
+  // If exporting to the same format as original Office document, preserve structure
+  if (currentFilePath && format === currentFileFormat && ['docx', 'pptx'].includes(format)) {
+    try {
+      const fileData = await window.api.readFile(currentFilePath);
+      if (fileData.ok) {
+        originalData = {
+          format: currentFileFormat,
+          // Include any additional data needed for preservation
+          // The file-handler will handle the actual XML structure preservation
+        };
+      }
+    } catch (err) {
+      console.log('Could not load original file data for preservation:', err);
+    }
+  }
+  
+  const result = await window.api.exportFile(currentFilePath, aiResult, format, originalData);
   
   if (result.canceled) return;
   if (result.error) {

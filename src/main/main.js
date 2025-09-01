@@ -107,7 +107,7 @@ class VisualDocEditor {
       return { canceled: false, filePath };
     });
 
-    ipcMain.handle('dialog:exportFile', async (event, { filePath, content, format }) => {
+    ipcMain.handle('dialog:exportFile', async (event, { filePath, aiResult, format, originalData }) => {
       const filters = {
         md: [{ name: 'Markdown Files', extensions: ['md'] }],
         docx: [{ name: 'Word Documents', extensions: ['docx'] }],
@@ -123,7 +123,7 @@ class VisualDocEditor {
       if (canceled) return { canceled: true };
       
       try {
-        await this.fileHandler.exportFile(exportPath, content, format);
+        await this.fileHandler.exportFile(exportPath, aiResult, format, originalData);
         return { canceled: false, filePath: exportPath };
       } catch (err) {
         return { canceled: false, error: err.message };

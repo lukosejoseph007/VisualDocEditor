@@ -10,7 +10,7 @@ class AIService {
     this.clineService = clineService;
   }
 
-  async performAction({ provider, apiKey, modelId, mode, text }) {
+  async performAction({ provider, apiKey, modelId, mode, text, xmlStructure = null }) {
     const startTime = Date.now();
     let responseTime = 0;
     
@@ -22,7 +22,8 @@ class AIService {
         provider,
         model: modelId,
         mode,
-        textLength: text.length
+        textLength: text.length,
+        hasXmlStructure: !!xmlStructure
       }
     );
     
@@ -39,33 +40,73 @@ class AIService {
       let systemPrompt;
       switch (mode) {
         case 'improve':
-          systemPrompt = 'You are a writing assistant. Improve the following text while preserving its meaning:';
+          systemPrompt = 'You are a writing assistant. Improve the following text while preserving its meaning and structure. Only modify the text content, do not change any formatting or structural elements:';
           break;
         case 'summarize':
-          systemPrompt = 'You are a summarization assistant. Create a concise summary of the following text:';
+          systemPrompt = 'You are a summarization assistant. Create a concise summary of the following text while preserving the original meaning:';
           break;
         case 'ask':
           systemPrompt = 'You are a helpful assistant. Answer the user\'s question based on the provided context:';
           break;
         default:
-          systemPrompt = 'You are a helpful assistant. Perform the requested action:';
+          systemPrompt = 'You are a helpful assistant. Perform the requested action while preserving document structure:';
       }
 
-      // Call the AI API
-      const response = await openai.chat.completions.create({
-        model: modelId,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: text }
-        ],
-        max_tokens: 2000
-      });
+      // If we have XML structure, process text nodes individually
+      let aiContent;
+      let updatedXmlStructure = null;
+      
+      if (xmlStructure) {
+        // Extract text nodes from XML structure with parent references
+        const textNodes = this.extractTextNodesFromXml(xmlStructure);
+        const processedNodes = [];
+        
+        // Process each text node with AI
+        for (const node of textNodes) {
+          if (node.text && node.text.trim().length > 0) {
+            const response = await openai.chat.completions.create({
+              model: modelId,
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: node.text }
+              ],
+              max_tokens: 500
+            });
+            
+            processedNodes.push({
+              ...node,
+              processedText: response.choices[0].message.content
+            });
+          } else {
+            processedNodes.push(node);
+          }
+        }
+        
+        // Apply processed text back to XML structure
+        this.applyProcessedNodesToXml(processedNodes);
+        updatedXmlStructure = xmlStructure;
+        
+        // Extract display text for the response
+        aiContent = this.extractDisplayTextFromXml(xmlStructure);
+      } else {
+        // Standard text processing
+        const response = await openai.chat.completions.create({
+          model: modelId,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: text }
+          ],
+          max_tokens: 2000
+        });
+        
+        aiContent = response.choices[0].message.content;
+      }
 
       responseTime = Date.now() - startTime;
       
       // Calculate token usage (approximate)
       const promptTokens = Math.ceil((systemPrompt.length + text.length) / 4);
-      const completionTokens = Math.ceil(response.choices[0].message.content.length / 4);
+      const completionTokens = Math.ceil(aiContent.length / 4);
       const totalTokens = promptTokens + completionTokens;
       
       // Calculate context size (system prompt + user input)
@@ -89,12 +130,12 @@ class AIService {
             completion: completionTokens,
             total: totalTokens
           },
-          contextSize: contextSize
+          contextSize: contextSize,
+          processedNodes: xmlStructure ? 'xml_aware' : 'plain_text'
         }
       );
       
       // Return enhanced result with metadata including thinking process
-      const aiContent = response.choices[0].message.content;
       return {
         content: aiContent,
         metadata: {
@@ -106,8 +147,11 @@ class AIService {
           },
           model: modelId,
           mode: mode,
-          thinkingProcess: this.generateThinkingProcess(mode, text, aiContent)
-        }
+          thinkingProcess: this.generateThinkingProcess(mode, text, aiContent),
+          xmlAware: !!xmlStructure
+        },
+        // Return updated XML structure for Office documents
+        xmlStructure: updatedXmlStructure
       };
     } catch (err) {
       responseTime = Date.now() - startTime;
@@ -133,6 +177,89 @@ class AIService {
         }
       };
     }
+  }
+
+  /**
+   * Extract text nodes from XML structure for AI processing with parent reference
+   * Enhanced to handle complex XML structures and avoid [object Object] issues
+   */
+  extractTextNodesFromXml(xmlStructure, path = '', parent = null, keyInParent = null, nodes = []) {
+    if (!xmlStructure) return nodes;
+    
+    if (typeof xmlStructure === 'object') {
+      for (const key in xmlStructure) {
+        if (xmlStructure.hasOwnProperty(key)) {
+          const value = xmlStructure[key];
+          const currentPath = path ? `${path}.${key}` : key;
+          
+          // Skip XML namespace objects and metadata
+          if (key === '$' || key.startsWith('xmlns:')) {
+            continue;
+          }
+          
+          // Look for text nodes in Office XML
+          if ((key === 'w:t' || key === 'a:t') && typeof value === 'string') {
+            nodes.push({
+              path: currentPath,
+              text: value,
+              type: key,
+              parent: xmlStructure,
+              keyInParent: key
+            });
+          } else if (typeof value === 'object' && value !== null) {
+            // Recursively process nested objects, but avoid circular references
+            if (!path.includes(currentPath)) { // Simple circular reference check
+              this.extractTextNodesFromXml(value, currentPath, xmlStructure, key, nodes);
+            }
+          }
+        }
+      }
+    }
+    
+    return nodes;
+  }
+
+  /**
+   * Apply processed text nodes back to XML structure
+   */
+  applyProcessedNodesToXml(processedNodes) {
+    processedNodes.forEach(node => {
+      if (node.processedText && node.processedText !== node.text) {
+        // Update the XML node directly
+        node.parent[node.keyInParent] = node.processedText;
+      }
+    });
+  }
+
+  /**
+   * Extract text content from XML for display purposes
+   * Enhanced to handle complex XML structures and provide better formatting
+   */
+  extractDisplayTextFromXml(xmlStructure) {
+    const textNodes = this.extractTextNodesFromXml(xmlStructure);
+    
+    // Group text by logical sections and add proper formatting
+    let result = '';
+    let currentSlide = 1;
+    let currentParagraph = 1;
+    
+    textNodes.forEach((node, index) => {
+      // Add slide markers for PPTX
+      if (node.path.includes('ppt/slides/slide') && index === 0) {
+        result += `Slide ${currentSlide}:\n`;
+        currentSlide++;
+      }
+      
+      // Add paragraph spacing for DOCX
+      if (node.path.includes('w:p') && index > 0) {
+        result += '\n\n';
+        currentParagraph++;
+      }
+      
+      result += node.text + ' ';
+    });
+    
+    return result.trim();
   }
 
   processFileContent(content, filePath) {

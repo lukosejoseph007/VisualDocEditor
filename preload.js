@@ -4,7 +4,7 @@ contextBridge.exposeInMainWorld('api', {
   // Files (enhanced for multiple formats)
   openFile: () => ipcRenderer.invoke('dialog:openFile'),
   saveFile: (filePath, content) => ipcRenderer.invoke('dialog:saveFile', { filePath, content }),
-  exportFile: (filePath, content, format) => ipcRenderer.invoke('dialog:exportFile', { filePath, content, format }),
+  exportFile: (filePath, aiResult, format, originalData) => ipcRenderer.invoke('dialog:exportFile', { filePath, aiResult, format, originalData }),
   openFolder: () => ipcRenderer.invoke('dialog:openFolder'),
   readFile: (filePath) => ipcRenderer.invoke('fs:readFile', { filePath }),
 
